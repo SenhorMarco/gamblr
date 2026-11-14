@@ -52,7 +52,12 @@
         <div id="service-notice" class="notice" role="status" hidden></div>
         <header class="topbar"><div><span class="eyebrow" id="page-kicker">GRUPOS PÚBLICOS</span><h1 id="page-title">Encontre sua turma.</h1><p id="page-subtitle" class="muted">Entre em um grupo e coloque seus palpites em jogo.</p></div><div class="top-actions"><button id="refresh-button" class="button secondary" title="Atualizar dados" aria-label="Atualizar dados">↻</button><button id="new-group-button" class="button primary">＋ Criar grupo</button></div></header>
 
-        <section id="feed-view" hidden aria-label="Feed de apostas"><div class="section-heading"><h2>Apostas mais recentes</h2></div><p id="feed-status" role="status"></p><div id="feed-list" class="public-grid"></div></section>
+        <section id="feed-view" hidden aria-label="Feed de apostas"><div class="section-heading"><h2>Apostas mais recentes</h2></div><form id="feed-filters" class="feed-filters">
+<label>Situação<select id="feed-state"><option value="all">Todas</option><option value="active">Ativas</option><option value="open">Aceitando palpites</option><option value="awaiting">Aguardando resultado</option><option value="RESULT_PUBLISHED">Resultado publicado</option><option value="SETTLED">Concluídas</option><option value="CANCELLED">Canceladas</option></select></label>
+<label>Pesquisar aposta<input id="feed-query" type="search" placeholder="Texto da pergunta"></label>
+<label>Publicadas a partir de<input id="feed-from" type="date"></label><label>Publicadas até<input id="feed-to" type="date"></label>
+<fieldset class="feed-group-filter"><legend>Grupos</legend><p class="muted small">Sem seleção, mostra todos os seus grupos.</p><div id="feed-groups"></div></fieldset>
+<button type="reset" class="button secondary">Limpar filtros</button></form><p id="feed-filter-error" class="form-error" role="alert" hidden></p><p id="feed-status" role="status"></p><div id="feed-list" class="public-grid"></div></section>
       <section id="explore-view"><div class="section-heading"><h2>Grupos para entrar agora</h2></div><div id="public-groups" class="public-grid"></div></section>
 
         <section id="group-view" hidden>
