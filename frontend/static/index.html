@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#3b5998"><title>Gamblr · Grupos e conversas</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%233b5998'/%3E%3Ctext x='10' y='30' font-size='32' font-family='Arial' font-weight='bold' fill='white'%3Eg%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/assets/style.css"><script type="module" src="/assets/app.js"></script>
+</head>
+<body>
+  <section id="auth-view" class="auth-layout">
+    <header class="site-bar"><div class="bar-inner"><a class="brand" href="/">gamblr</a><span class="bar-caption">Grupos, amigos e seus melhores palpites.</span></div></header>
+    <div class="auth-inner">
+      <div class="auth-story"><h1>Uma conversa fica melhor<br>quando todo mundo participa.</h1><p>Reúna o grupo, publique uma pergunta e acompanhe os palpites com pontos virtuais.</p>
+        <div class="welcome-network" aria-hidden="true"><span>g</span><i></i><span>g</span><i></i><span>g</span></div>
+        <ul class="welcome-list"><li><b>Seus grupos</b><span>Um espaço para cada turma.</span></li><li><b>Suas apostas</b><span>Uma escolha, um palpite definitivo.</span></li><li><b>Seu placar</b><span>Pontos e odds atualizados para o grupo.</span></li></ul>
+      </div>
+      <div class="auth-panel"><div class="auth-box"><span class="prototype-tag">PROTÓTIPO LOCAL</span><h2 id="auth-title">Entre na conversa.</h2><p class="muted" id="auth-description">Acesse sua conta para acompanhar seus grupos.</p>
+        <div class="segmented" aria-label="Acesso à conta"><button id="login-tab" type="button" class="active">Entrar</button><button id="signup-tab" type="button">Criar conta</button></div>
+        <form id="auth-form">
+          <label id="name-label" hidden>Seu nome<input id="auth-name" autocomplete="nickname" placeholder="Como o grupo te conhece"></label>
+          <label>E-mail<input id="auth-email" type="email" autocomplete="email" placeholder="voce@exemplo.com" required></label>
+          <label>Senha<input id="auth-password" type="password" autocomplete="current-password" placeholder="Sua senha" required></label>
+          <p id="auth-error" class="form-error" role="alert" hidden></p><p id="auth-info" class="form-info" role="status" hidden></p>
+          <button id="auth-submit" class="button primary full" type="submit" disabled>Entrar no Gamblr <span>↗</span></button>
+        </form><p class="auth-note">Use “Outra sessão” depois de entrar para testar com uma segunda conta.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <div id="app-view" class="app-layout" hidden>
+    <header class="site-bar"><div class="bar-inner">
+      <a class="brand" href="/" aria-label="Gamblr início">gamblr</a>
+      <form id="search-form" class="header-search" role="search"><input id="group-search" type="search" aria-label="Pesquisar grupos" placeholder="Pesquisar grupos"><button type="submit" aria-label="Pesquisar">⌕</button></form>
+      <nav class="header-nav" aria-label="Navegação principal"><button id="home-button">Página inicial</button><button id="messages-button">Mensagens</button><a href="/?nova=1" target="_blank" rel="noopener noreferrer">Outra sessão ↗</a><button id="logout-button">Sair</button></nav>
+    </div></header>
+
+    <div class="site-shell">
+      <aside class="sidebar" aria-label="Grupos e amigos">
+        <div class="user-card"><span class="avatar" id="user-initial">G</span><div><strong id="user-name"></strong><span id="user-email"></span></div></div>
+        <button id="explore-button" class="nav-button active"><span>▦</span> Explorar grupos</button>
+        <div class="sidebar-heading"><span>GRUPOS</span><button id="new-group-side" class="icon-button" aria-label="Criar grupo">＋</button></div>
+        <nav id="group-list" aria-label="Seus grupos"></nav><p id="no-groups" class="sidebar-empty" hidden>Você ainda não participa de um grupo.</p>
+        <div class="sidebar-heading friends-heading"><span>AMIGOS</span><button id="add-friend" class="icon-button" aria-label="Adicionar amigo">＋</button></div>
+        <div id="friends-list"></div><p id="friends-error" class="form-error small" role="status" hidden></p>
+        <button id="private-nav" class="nav-button"><span>▤</span> Conversas privadas</button>
+        <div class="sidebar-footer"><span id="connection-label" class="connection"><i></i><span>Conectando</span></span><p>Pontos virtuais. Sem compra ou saque.</p></div>
+      </aside>
+
+      <main class="workspace">
+        <div id="service-notice" class="notice" role="status" hidden></div>
+        <header class="topbar"><div><span class="eyebrow" id="page-kicker">GRUPOS PÚBLICOS</span><h1 id="page-title">Encontre sua turma.</h1><p id="page-subtitle" class="muted">Entre em um grupo e coloque seus palpites em jogo.</p></div><div class="top-actions"><button id="refresh-button" class="button secondary" title="Atualizar dados" aria-label="Atualizar dados">↻</button><button id="new-group-button" class="button primary">＋ Criar grupo</button></div></header>
+
+        <section id="explore-view"><div class="section-heading"><h2>Grupos para entrar agora</h2></div><div id="public-groups" class="public-grid"></div></section>
+
+        <section id="group-view" hidden>
+          <article class="chat-window" aria-labelledby="group-chat-heading">
+            <div class="chat-heading"><h2 id="group-chat-heading">Conversa do grupo</h2><span class="unavailable-tag">Atualiza a cada 3 s</span></div>
+            <div class="chat-history"><button id="group-older" type="button" class="button secondary" hidden>Mensagens anteriores</button><button id="group-latest" type="button" class="button secondary" hidden>Voltar às recentes</button></div>
+            <div id="group-thread" class="chat-stream" role="log" aria-label="Mensagens do grupo" aria-live="polite"></div>
+            <form id="group-chat-composer" class="chat-composer"><label class="sr-only" for="group-message">Mensagem no grupo</label><textarea id="group-message" rows="2" maxlength="4000" placeholder="Escreva uma mensagem…" required disabled></textarea><p id="group-error" class="form-error" role="alert" hidden></p><div class="composer-footer"><span>Seu histórico começa na entrada no grupo</span><button id="group-send" type="submit" class="button primary" disabled>Enviar</button></div></form>
+          </article>
+        </section>
+
+        <section id="private-view" hidden>
+          <article class="chat-window" aria-labelledby="private-chat-heading">
+            <div class="chat-heading"><h2 id="private-chat-heading">Mensagens privadas</h2><span class="unavailable-tag">Entre amigos</span></div>
+            <div class="chat-history"><button id="private-older" type="button" class="button secondary" hidden>Mensagens anteriores</button><button id="private-latest" type="button" class="button secondary" hidden>Voltar às recentes</button></div>
+            <div id="private-thread" class="chat-stream" role="log" aria-label="Mensagens privadas" aria-live="polite"></div>
+            <form id="private-chat-composer" class="chat-composer"><label class="sr-only" for="private-message">Mensagem privada</label><textarea id="private-message" rows="2" maxlength="4000" placeholder="Escreva uma mensagem para seu amigo…" required disabled></textarea><p id="private-error" class="form-error" role="alert" hidden></p><div class="composer-footer"><span>Conversas privadas não têm apostas</span><button id="private-send" type="submit" class="button primary" disabled>Enviar</button></div></form>
+          </article>
+        </section>
+      </main>
+
+      <aside class="right-column" aria-label="Apostas do grupo">
+        <section id="empty-betting" class="side-empty"><h2>Apostas do grupo</h2><p id="empty-betting-text">Selecione um grupo para acompanhar as apostas ativas.</p><span>Os palpites usam apenas pontos virtuais.</span></section>
+        <section id="betting-column" hidden>
+          <div class="right-heading"><h2>Apostas do grupo <span id="bet-count" class="count-badge">0</span></h2><button id="new-bet-button" class="button primary" hidden>＋ Nova aposta</button></div>
+          <div class="stats"><article class="stat"><span>DISPONÍVEIS</span><strong id="available-points">—</strong></article><article class="stat"><span>RESERVADOS</span><strong id="reserved-points">—</strong></article><article class="stat"><span>ABERTAS</span><strong id="open-bets">—</strong></article></div>
+          <div class="bets-toolbar"><span>Palpites do grupo</span><select id="bet-filter" aria-label="Filtrar apostas"><option value="open">Ativas</option><option value="all">Todas</option><option value="mine">Meus palpites</option></select></div>
+          <div id="bets-list" class="bets-list"></div><div id="bet-detail" class="bet-detail" hidden></div>
+          <details class="ranking-panel"><summary>Ranking do grupo <span class="live-label">Atualizado</span></summary><p class="muted small">Ordenado pelo saldo disponível.</p><ol id="ranking-list" class="ranking-list"></ol><p id="ranking-error" class="muted small" hidden></p><div class="ranking-foot">Os pontos reservados ficam fora do ranking.</div></details>
+        </section>
+      </aside>
+    </div>
+    <footer class="workspace-footer"><span>gamblr © protótipo</span><span>Pontos virtuais · Apuração automática após o prazo de contestação</span></footer>
+  </div>
+  <dialog id="friend-dialog"><div class="dialog-heading"><h2>Encontrar amigos</h2><button type="button" class="close-dialog" aria-label="Fechar">×</button></div><p class="muted">Busque pelo nome usado no Gamblr. O chat privado será liberado após o aceite do pedido.</p><form id="friend-search-form"><label>Nome do usuário<input id="friend-search" minlength="2" maxlength="80" required autocomplete="off"></label><button id="friend-search-submit" class="button primary" type="submit">Buscar pessoas</button></form><p id="friend-search-error" class="form-error" role="alert" hidden></p><div id="friend-results"></div></dialog>
+  <dialog id="group-dialog"><form id="group-form"><div class="dialog-heading"><div><span class="eyebrow">UM NOVO COMEÇO</span><h2>Crie seu grupo.</h2></div><button type="button" class="close-dialog" aria-label="Fechar">×</button></div><p class="muted">Neste protótipo, novos grupos são públicos e permitem entrada imediata.</p>
+    <label>Nome do grupo<input name="name" placeholder="Ex.: A turma de sexta" required></label><label>Pontos iniciais por integrante<input name="initialPoints" type="number" min="0" step="any" value="100" required></label>
+    <details><summary>Configurações de pontos e prazos</summary><label>Crédito diário configurado<input name="dailyPoints" type="number" min="0" step="any" value="0" required></label><p class="muted small">A distribuição diária automática ainda não está ativa.</p><div class="form-grid"><label>Prazo de apuração (min)<input name="settlementMinutes" type="number" min="0" value="60" required></label><label>Prazo de contestação (min)<input name="contestMinutes" type="number" min="0" value="60" required></label></div></details>
+    <p class="form-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="button secondary close-dialog">Cancelar</button><button type="submit" class="button primary">Criar grupo ↗</button></div>
+  </form></dialog>
+  <dialog id="bet-dialog"><form id="bet-form"><div class="dialog-heading"><div><span class="eyebrow">COLOQUE EM JOGO</span><h2>Qual é o palpite?</h2></div><button type="button" class="close-dialog" aria-label="Fechar">×</button></div>
+    <label>Pergunta<input name="question" placeholder="Ex.: Vai chover durante o jogo?" required></label><label>Tipo<select name="type" id="bet-type"><option value="BINARY">Sim ou Não</option><option value="MULTIPLE_CHOICE">Múltipla escolha</option></select></label>
+    <label id="options-label" hidden>Opções (uma por linha)<textarea name="options" rows="4" placeholder="Opção A&#10;Opção B&#10;Opção C"></textarea></label>
+    <div class="form-grid"><label>Término da aposta<input name="endsAt" id="bet-ends" type="datetime-local" required></label><label>Mínimo por palpite<input name="minimumPoints" type="number" min="0" step="any" value="10" required></label></div><p class="muted small">Os palpites fecham aos 90% da duração. Você não pode palpitar na própria aposta.</p>
+    <label>Como verificar o resultado? <span class="muted small">Opcional</span><textarea name="verificationCriterion" rows="2" placeholder="Descreva um critério claro para o grupo"></textarea></label><p class="form-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="button secondary close-dialog">Cancelar</button><button type="submit" class="button primary">Publicar aposta ↗</button></div>
+  </form></dialog>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+</body></html>
