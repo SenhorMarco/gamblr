@@ -115,7 +115,7 @@ RF-09 Valor e reserva de pontos — O valor do palpite deve atingir o mínimo de
 
 Visibilidade das apostas de grupo
 
-**Status: Parcial** — Contagem e odds disponíveis a todos os membros; interface consulta a cada 5 segundos enquanto visível. Atualização contínua por eventos não implementada.
+**Status: Parcial (Ferreira fazendo)** — Contagem e odds disponíveis a todos os membros; interface consulta a cada 5 segundos enquanto visível. Atualização contínua por eventos não implementada.
 
 RF-13 Contagem e odds em tempo real — Todos os membros podem acompanhar, em tempo real, a contagem de votos e a odd de cada opção em todas as apostas que ainda aceitam palpites, inclusive quando não apostaram nelas.
 
