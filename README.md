@@ -10,6 +10,9 @@ migrações até V008 aplicadas, execute na raiz do projeto:
 .\iniciar.cmd
 ```
 
+No Linux, prepare o ambiente conforme [execução local](docs/execucao-local.md#linux)
+e execute `./iniciar.sh`.
+
 Abra **http://127.0.0.1:5173** quando os serviços estiverem prontos. Ctrl+C encerra
 todos os processos iniciados pelo comando. Pare instâncias antigas antes de usar.
 Para iniciar somente os dois backends: `.\iniciar.cmd --backend-only`.

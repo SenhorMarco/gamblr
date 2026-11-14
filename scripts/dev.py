@@ -57,6 +57,9 @@ def check_ports(items, host):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
             if os.name == "nt":
                 probe.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            else:
+                # Permite reiniciar apos conexoes HTTP em TIME_WAIT no Linux.
+                probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 probe.bind((host, service.port))
             except OSError:

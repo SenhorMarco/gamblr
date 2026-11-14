@@ -56,6 +56,17 @@ def running_windows(pid):
         kernel.CloseHandle(handle)
 
 
+def running(pid):
+    if os.name == 'nt':
+        return running_windows(pid)
+    try:
+        # Um zombie ja encerrou e aguarda apenas coleta pelo pai do sistema.
+        stat = Path(f'/proc/{pid}/stat').read_text()
+        return stat.rsplit(')', 1)[1].split()[0] != 'Z'
+    except FileNotFoundError:
+        return False
+
+
 class DevTests(unittest.TestCase):
     def test_port_conflict_does_not_interrupt_existing_server(self):
         with socket.socket() as existing:
@@ -73,21 +84,21 @@ class DevTests(unittest.TestCase):
             with self.assertRaises(StartError): services({'GAMBLR_WRITER_PORT':'5000'})
             with self.assertRaises(StartError): services({'GAMBLR_WRITER_PORT':'invalid'})
 
-    @unittest.skipUnless(os.name=='nt','Supervisao de processos do Windows')
+    @unittest.skipUnless(os.name == 'nt' or sys.platform == 'linux', 'Windows ou Linux')
     def test_interrupt_stops_child_and_grandchild(self):
-        with tempfile.TemporaryDirectory(dir=ROOT/'.tools') as directory:
+        with tempfile.TemporaryDirectory() as directory:
             worker=Path(directory)/'worker.py';worker.write_text(WORKER,encoding='utf-8')
             marker=Path(directory)/'pids.json'
             item=Service('Teste',(str(worker),'server',str(port:=free_port()),str(marker)),port,'/')
             def interrupt(): raise KeyboardInterrupt
             with contextlib.redirect_stdout(io.StringIO()):
                 with self.assertRaises(KeyboardInterrupt):supervise([item],timeout=15,on_ready=interrupt)
-            for pid in json.loads(marker.read_text()):self.assertFalse(running_windows(pid),f'Processo {pid} ficou ativo')
+            for pid in json.loads(marker.read_text()):self.assertFalse(running(pid),f'Processo {pid} ficou ativo')
             check_ports([item],'127.0.0.1')
 
-    @unittest.skipUnless(os.name=='nt','Supervisao de processos do Windows')
+    @unittest.skipUnless(os.name == 'nt' or sys.platform == 'linux', 'Windows ou Linux')
     def test_failed_service_stops_other_tree(self):
-        with tempfile.TemporaryDirectory(dir=ROOT/'.tools') as directory:
+        with tempfile.TemporaryDirectory() as directory:
             worker=Path(directory)/'worker.py';worker.write_text(WORKER,encoding='utf-8')
             marker=Path(directory)/'pids.json'
             server=Service('Servidor',(str(worker),'server',str(port:=free_port()),str(marker)),port,'/')
@@ -95,7 +106,7 @@ class DevTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()):
                 with self.assertRaisesRegex(StartError,'Falha encerrou'):
                     supervise([server,failing],timeout=15)
-            for pid in json.loads(marker.read_text()):self.assertFalse(running_windows(pid),f'Processo {pid} ficou ativo')
+            for pid in json.loads(marker.read_text()):self.assertFalse(running(pid),f'Processo {pid} ficou ativo')
             check_ports([server],'127.0.0.1')
 
 
