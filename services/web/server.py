@@ -105,6 +105,9 @@ def create_app(config):
         authorization = request.headers.get("Authorization")
         if authorization:
             headers["Authorization"] = authorization
+        version = request.headers.get("X-Odds-Version", "")
+        if service == "reader" and re.fullmatch(rf"api/bets/{UUID}/odds", path) and re.fullmatch(r"[a-f0-9]{64}", version):
+            headers["X-Odds-Version"] = version
         data = request.get_data() if request.method == "POST" else None
         upstream = urllib.request.Request(f"http://127.0.0.1:{ports[service]}/{path}{query}",data=data,headers=headers,method=request.method)
         try:

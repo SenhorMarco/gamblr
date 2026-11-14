@@ -3,6 +3,8 @@
 from decimal import Decimal, ROUND_HALF_UP
 from functools import wraps
 import os
+import hashlib
+import time
 import re
 import ssl
 from urllib.parse import urlparse
@@ -163,7 +165,24 @@ def create_app(overrides=None):
         if not rows:
             raise ApiError(404, "NOT_FOUND", "Aposta nao encontrada.")
         member(rows[0][0])
-        return jsonify(betId=str(bet_id), groupId=str(rows[0][0]), totalVotes=int(rows[0][5]), options=[{
+        previous = request.headers.get("X-Odds-Version", "")
+        deadline = time.monotonic() + 15
+        version = hashlib.sha256(repr(rows).encode()).hexdigest()
+        while previous == version and time.monotonic() < deadline:
+            # Cada leitura precisa de um snapshot novo, inclusive para revogacoes.
+            connection = g.pop("database", None)
+            if connection is not None:
+                try:
+                    connection.rollback()
+                finally:
+                    connection.close()
+            time.sleep(0.5)
+            rows = query(f"SELECT group_id,option_id,label,position,votes,total_votes,decimal_odds FROM {schema_sql}.bet_odds WHERE bet_id=%s ORDER BY position", (bet_id,))
+            if not rows:
+                raise ApiError(404, "NOT_FOUND", "Aposta nao encontrada.")
+            member(rows[0][0])
+            version = hashlib.sha256(repr(rows).encode()).hexdigest()
+        return jsonify(version=version, betId=str(bet_id), groupId=str(rows[0][0]), totalVotes=int(rows[0][5]), options=[{
             "optionId": str(row[1]), "label": row[2], "position": int(row[3]), "votes": int(row[4]),
             "decimalOdds": None if row[6] is None else format(row[6].quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), "f")
         } for row in rows])
