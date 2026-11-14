@@ -123,7 +123,7 @@ RF-13 Contagem e odds em tempo real — Todos os membros podem acompanhar, em te
 
 RF-14 Privacidade dos palpites — Cada participante pode consultar somente a própria escolha e o valor que apostou. Os dados compartilhados com o grupo são agregados por opção.
 
-**Status: Implementado** — View de odds calcula total de pontos/pontos da opção (V010); interface exibe “—” sem pontos e barra proporcional aproximada.
+**Status: Implementado** — View de odds calcula total de pontos/pontos da opção (V010); interface exibe “—” sem pontos. A barra contínua representa a proporção de pessoas por opção, separadamente das odds.
 
 RF-05 Cálculo da odd decimal — Para uma opção com pontos apostados, divide-se o total de pontos da aposta pelo total de pontos daquela opção. Por exemplo, 40 pontos de um total de 100 produzem odd 2,50. Opções sem pontos exibem “—”. O pagamento segue o RF-07.
 
