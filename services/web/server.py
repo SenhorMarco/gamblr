@@ -10,7 +10,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 
 UUID = r"[a-fA-F0-9-]{36}"
 RESOLUTION_GET = rf"api/bets/{UUID}/resolution"
-RESOLUTION_POST = rf"api/bets/{UUID}/(?:result|contests|decision|cancel)"
+RESOLUTION_POST = rf"api/bets/{UUID}/(?:result|contests|decision|cancel|delete)"
 ROUTES = {
     "writer": {
         "GET": [r"api/groups",r"api/groups/public",rf"api/groups/{UUID}/bets",rf"api/groups/{UUID}/wallet/me",rf"api/bets/{UUID}",rf"api/bets/{UUID}/prediction/me",r"api/users",r"api/friendships",rf"api/groups/{UUID}/messages",rf"api/friends/{UUID}/messages"],
@@ -20,6 +20,13 @@ ROUTES = {
 }
 ROUTES["writer"]["GET"].append(RESOLUTION_GET)
 ROUTES["writer"]["POST"].append(RESOLUTION_POST)
+ROUTES["writer"]["GET"] += [rf"api/groups/{UUID}/(?:settings|members|join-requests)",r"api/group-invitations"]
+ROUTES["writer"]["POST"] += [
+    rf"api/groups/{UUID}/(?:settings|leave|transfer|invitations|join-requests)",
+    rf"api/groups/{UUID}/members/{UUID}/(?:role|remove)",
+    rf"api/groups/{UUID}/join-requests/{UUID}/(?:approve|decline)",
+    rf"api/group-invitations/{UUID}/(?:accept|decline)",
+]
 
 
 def create_app(config):

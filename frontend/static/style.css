@@ -166,6 +166,17 @@ label select { width: 100%; }
 .resolution-panel .button { width: 100%; margin-top: 10px; white-space: normal; }
 .resolution-panel label { margin: 12px 0 6px; }
 .resolution-credit { padding: 10px; border: 1px solid #ccd9bf; background: #f0f5eb; color: #526c3d; }
+.delete-bet { width: 100%; margin-top: 8px; color: #8b4545; }
+.manage-dialog { max-width: 650px; }
+.manage-dialog .dialog-heading { position: sticky; top: 0; background: #fff; z-index: 2; }
+.manage-dialog h3 { font-size: 14px; color: #3b5998; border-top: 1px solid #d5dce8; padding-top: 18px; margin-top: 24px; }
+.member-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 0; border-bottom: 1px solid #e0e5ed; }
+.member-row > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.member-row strong, .member-row small { display: block; }
+.member-row small { color: #69758a; margin-top: 5px; }
+.member-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.member-actions .button { font-size: 10px; }
+.leave-group { margin-top: 25px; border-top: 1px solid #d5dce8; padding-top: 15px; }
 .ranking-panel { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 15px; }
 .ranking-panel summary { font-size: 11px; font-weight: bold; color: #677995; cursor: pointer; }
 .ranking-panel > p { margin: 12px 0; font-size: 10px; }

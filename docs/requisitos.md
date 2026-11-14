@@ -18,6 +18,8 @@ RF-17 Entrada e convites — Usuários podem entrar em um grupo por convite. Gru
 
 RF-18 Solicitações, remoção de membros e mensagens — O dono e os moderadores podem aprovar solicitações de entrada e apagar mensagens do chat, inclusive mensagens de outros membros. O dono pode remover membros comuns e moderadores e apagar apostas. Um moderador pode remover apenas membros comuns e não pode apagar apostas.
 
+Ao apagar uma aposta pendente, o sistema a cancela e devolve integralmente os pontos reservados. Se a aposta já estiver concluída, apenas a oculta, sem desfazer pagamentos. O histórico financeiro é preservado. Decisão confirmada para a exclusão de apostas pelo dono.
+
 RF-29 Gestão de moderadores — Somente o dono pode nomear ou destituir moderadores.
 
 RF-27 Transferência e sucessão — O dono pode transferir a propriedade para outro membro. A transferência é imediata e dispensa aceite. O antigo dono passa a ser moderador. Se o dono sair sem nomear um sucessor, o sistema transfere a propriedade ao moderador atual com a primeira entrada mais antiga. Se não houver moderadores, assume o membro atual com a primeira entrada mais antiga. A primeira data de entrada é preservada em caso de retorno. O novo dono assume as contestações pendentes.

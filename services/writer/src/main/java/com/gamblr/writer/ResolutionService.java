@@ -15,7 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ResolutionService {
     private final JdbcTemplate jdbc;
     private final ServerTime time;
-    ResolutionService(JdbcTemplate jdbc,ServerTime time) {this.jdbc=jdbc;this.time=time;}
+    private final GroupLock locks;
+    ResolutionService(JdbcTemplate jdbc,ServerTime time,GroupLock locks) {this.jdbc=jdbc;this.time=time;this.locks=locks;}
     record Resolution(String state,String phase,Instant resultDeadline,Instant contestDeadline,
         UUID publishedOptionId,UUID finalOptionId,Instant concludedAt,String conclusionReason,
         long pendingContests,boolean myPendingContest,boolean canPublishResult,boolean canContest,
@@ -33,14 +34,17 @@ public class ResolutionService {
     private static final String SELECT="""
         SELECT b.*,g.owner_id,d.action AS last_decision_action,b.ends_at+b.settlement_period AS result_deadline,
             b.result_published_at+b.contest_period AS contest_deadline
-        FROM bets b JOIN groups g ON g.id=b.group_id LEFT JOIN contest_decisions d ON d.id=b.last_decision_id WHERE b.id=?
+        FROM bets b JOIN groups g ON g.id=b.group_id LEFT JOIN contest_decisions d ON d.id=b.last_decision_id WHERE b.id=? AND b.deleted_at IS NULL
         """;
     private Bet load(UUID bet) {return jdbc.queryForObject(SELECT,this::read,bet);}
     private Bet lock(UUID bet,boolean skipLocked) {
+        var groups=jdbc.query("SELECT group_id FROM bets WHERE id=? AND deleted_at IS NULL",(rs,row)->rs.getObject(1,UUID.class),bet);
+        if(groups.isEmpty()){if(skipLocked)return null;throw ApiError.missing();}
+        if(skipLocked){if(!locks.tryLock(groups.getFirst()))return null;}else locks.lock(groups.getFirst());
         var rows=jdbc.query(SELECT+" FOR UPDATE OF b"+(skipLocked?" SKIP LOCKED":""),this::read,bet);
         if(rows.isEmpty()){if(skipLocked)return null;throw ApiError.missing();}
         Bet locked=rows.getFirst();
-        // Mesma ordem entre apostas: aposta -> grupo -> membros -> carteiras.
+        // Lock logico do grupo antes de qualquer row lock, inclusive na administracao.
         jdbc.query("SELECT id FROM groups WHERE id=? FOR SHARE",rs->{},locked.group());
         jdbc.query("SELECT user_id FROM memberships WHERE group_id=? ORDER BY user_id FOR SHARE",rs->{},locked.group());
         // A propriedade pode ter mudado enquanto o lock do grupo era aguardado.
@@ -167,8 +171,21 @@ public class ResolutionService {
     }
     @Transactional
     public void process(UUID bet) {Bet locked=lock(bet,true);if(locked!=null)advance(locked,time.now());}
+    @Transactional
+    public void processGroup(UUID group) {
+        locks.lock(group);
+        var bets=jdbc.query("SELECT id FROM bets WHERE group_id=? AND deleted_at IS NULL AND state IN ('OPEN','RESULT_PUBLISHED') ORDER BY id",(rs,row)->rs.getObject(1,UUID.class),group);
+        for(UUID bet:bets){Bet locked=lock(bet,false);advance(locked,time.now());}
+    }
+    @Transactional
+    public void deleteByOwner(UUID user,UUID bet) {
+        Bet locked=lock(bet,false);member(locked,user);if(!locked.owner().equals(user))throw ApiError.forbidden();
+        Instant now=time.now();if(!locked.terminal())conclude(locked,now,true,"OWNER_DELETED");
+        jdbc.update("UPDATE group_messages SET deleted_at=COALESCE(deleted_at,?) WHERE bet_id=?",Timestamp.from(now),bet);
+        jdbc.update("UPDATE bets SET deleted_at=? WHERE id=?",Timestamp.from(now),bet);
+    }
     @Transactional(readOnly=true)
     public List<UUID> batch(UUID after) {
-        return jdbc.query("SELECT id FROM bets WHERE state IN ('OPEN','RESULT_PUBLISHED') AND (?::uuid IS NULL OR id>?) ORDER BY id LIMIT 100",(rs,row)->rs.getObject(1,UUID.class),after,after);
+        return jdbc.query("SELECT id FROM bets WHERE deleted_at IS NULL AND state IN ('OPEN','RESULT_PUBLISHED') AND (?::uuid IS NULL OR id>?) ORDER BY id LIMIT 100",(rs,row)->rs.getObject(1,UUID.class),after,after);
     }
 }

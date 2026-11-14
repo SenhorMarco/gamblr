@@ -1,5 +1,9 @@
 # Banco de dados: permissões e migrações
 
+Para administração e crédito diário, após V001–V008, execute o arquivo completo
+[V009__group_administration.sql](../database/migrations/V009__group_administration.sql)
+como `postgres`. Veja [administracao.md](administracao.md).
+
 Para o ciclo de resultados, após V001–V007, execute somente a nova
 [V008__bet_resolution.sql](../database/migrations/V008__bet_resolution.sql)
 como `postgres` no SQL Editor. Veja [resultados.md](resultados.md).

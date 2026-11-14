@@ -51,6 +51,8 @@ class WriterIntegrationTest {
     boolean created;
     BettingService service;
     ResolutionService resolutions;
+    GroupService administration;
+    DailyCreditService daily;
     JdbcTemplate database;
     HikariDataSource migrationPool;
 
@@ -75,7 +77,7 @@ class WriterIntegrationTest {
             connection.setAutoCommit(false);
             for (String file : List.of("V001__schema_permissions.sql", "V002__users_groups_balances.sql",
                 "V003__bets_predictions_movements.sql", "V004__ranking_odds_views.sql", "V005__external_identities.sql",
-                "V006__reader_membership_identity.sql", "V007__friendships_messages.sql", "V008__bet_resolution.sql")) {
+                "V006__reader_membership_identity.sql", "V007__friendships_messages.sql", "V008__bet_resolution.sql", "V009__group_administration.sql")) {
                 String sql = Files.readString(Path.of("../../database/migrations", file))
                     .replace("gamblr.", schema+".").replace("SCHEMA gamblr", "SCHEMA "+schema)
                     .replaceAll("(?m)^(BEGIN;|COMMIT;)\\s*$", "");
@@ -107,11 +109,12 @@ class WriterIntegrationTest {
             "spring.datasource.url", url(), "spring.datasource.hikari.data-source-properties.sslmode", "verify-full",
             "spring.datasource.hikari.data-source-properties.sslrootcert", System.getenv("SUPABASE_DB_SSLROOTCERT"),
             "gamblr.auth.issuer", issuer, "gamblr.auth.jwk-set-uri", issuer+"/jwks", "gamblr.supabase-url", "",
-            "server.port", "0", "server.address", "127.0.0.1", "gamblr.resolution.worker-enabled",false))));
+            "server.port", "0", "server.address", "127.0.0.1", "gamblr.resolution.worker-enabled",false,"gamblr.administration.worker-enabled",false))));
         context = application.run();
         base = "http://127.0.0.1:"+context.getEnvironment().getProperty("local.server.port");
         service = context.getBean(BettingService.class);
         resolutions=context.getBean(ResolutionService.class);
+        administration=context.getBean(GroupService.class);daily=context.getBean(DailyCreditService.class);
     }
     @AfterAll void cleanup() throws Exception {
         if (context != null) context.close();
@@ -125,6 +128,148 @@ class WriterIntegrationTest {
         }
     }
     @BeforeEach void resetTime() { NOW.set(PUBLICATION); }
+
+    Cycle adminCycle() throws Exception {
+        String owner=UUID.randomUUID().toString(),user=UUID.randomUUID().toString(),other=UUID.randomUUID().toString();
+        UUID ownerId=profile(owner),userId=profile(user),otherId=profile(other);
+        UUID group=service.createGroup(ownerId,new Requests.Group("Administração",new BigDecimal("100"),BigDecimal.ZERO,60,60,Requests.Visibility.PUBLIC,Requests.EntryMode.IMMEDIATE,Requests.InvitePolicy.ALL_MEMBERS)).id();
+        service.joinPublicGroup(userId,group);service.joinPublicGroup(otherId,group);NOW.set(Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        var bet=service.publish(ownerId,group,new Requests.Bet("Aposta do grupo",Requests.BetType.BINARY,null,null,NOW.get().plusSeconds(600),BigDecimal.ZERO));
+        return new Cycle(ownerId,userId,otherId,group,bet,owner,user,other);
+    }
+    @Test void groupGovernanceEnforcesHierarchyTransferAndPendingDecisions() throws Exception {
+        var f=adminCycle();stake(f,f.user,0,"10");
+        assertEquals(403,request("POST","/api/groups/"+f.group+"/members/"+f.other+"/role",f.userSubject,"{\"role\":\"MODERATOR\"}").statusCode());
+        administration.setRole(f.owner,f.group,f.user,new Requests.MemberRole(Requests.Role.MODERATOR));
+        administration.setRole(f.owner,f.group,f.other,new Requests.MemberRole(Requests.Role.MODERATOR));
+        assertThrows(ApiError.class,()->administration.remove(f.user,f.group,f.other));
+        assertThrows(ApiError.class,()->administration.remove(f.user,f.group,f.owner));
+        NOW.set(f.bet.endsAt());resolutions.publish(f.owner,f.bet.id(),f.bet.options().getFirst().id());resolutions.contest(f.user,f.bet.id());
+        administration.transfer(f.owner,f.group,f.other);
+        assertEquals("MODERATOR",administration.settings(f.owner,f.group).myRole());
+        assertThrows(ApiError.class,()->resolutions.decide(f.owner,f.bet.id(),new Requests.Decision(Requests.DecisionAction.KEEP,null)));
+        assertTrue(resolutions.view(f.other,f.bet.id()).canDecide());
+        var exit=administration.leave(f.other,f.group);assertEquals(f.owner,exit.successorId());
+        assertTrue(resolutions.view(f.owner,f.bet.id()).canDecide());
+        resolutions.decide(f.owner,f.bet.id(),new Requests.Decision(Requests.DecisionAction.KEEP,null));
+        NOW.set(f.bet.endsAt().plusSeconds(60));resolutions.process(f.bet.id());money("100",service.wallet(f.user,f.group).availablePoints());
+        administration.remove(f.owner,f.group,f.user);
+        assertEquals("OWNER",administration.settings(f.owner,f.group).myRole());
+        assertThrows(ApiError.class,()->administration.settings(f.user,f.group));
+    }
+    @Test void invitationsAndRequestsGateEntryWithoutRepeatingInitialCredit() throws Exception {
+        var f=adminCycle();
+        var config=new Requests.Group("Privado",new BigDecimal("100"),BigDecimal.ZERO,60,60,Requests.Visibility.PRIVATE,Requests.EntryMode.INVITE,Requests.InvitePolicy.MODERATORS);
+        UUID group=service.createGroup(f.owner,config).id();
+        assertThrows(ApiError.class,()->service.joinPublicGroup(f.user,group));
+        UUID invitation=administration.invite(f.owner,group,f.user);
+        assertTrue(administration.invitations(f.other).isEmpty());
+        assertThrows(ApiError.class,()->administration.answerInvitation(f.other,invitation,true));
+        administration.answerInvitation(f.user,invitation,true);
+        assertThrows(ApiError.class,()->administration.invite(f.user,group,f.other));
+        administration.setRole(f.owner,group,f.user,new Requests.MemberRole(Requests.Role.MODERATOR));
+        administration.answerInvitation(f.other,administration.invite(f.user,group,f.other),true);
+        var bet=service.publish(f.owner,group,new Requests.Bet("Reserva no retorno",Requests.BetType.BINARY,null,null,NOW.get().plusSeconds(600),BigDecimal.ZERO));
+        service.confirm(f.user,bet.id(),new Requests.Prediction(bet.options().getFirst().id(),new BigDecimal("30")));
+        NOW.set(NOW.get().plusSeconds(30));administration.remove(f.owner,group,f.user);
+        administration.answerInvitation(f.user,administration.invite(f.owner,group,f.user),true);
+        money("70",service.wallet(f.user,group).availablePoints());money("30",service.wallet(f.user,group).reservedPoints());
+        assertEquals("MEMBER",administration.settings(f.user,group).myRole());
+        resolutions.cancel(f.owner,bet.id());money("100",service.wallet(f.user,group).availablePoints());
+        assertEquals(1,database.queryForObject("SELECT count(*) FROM point_movements WHERE group_id=? AND user_id=? AND kind='INITIAL_CREDIT'",Integer.class,group,f.user));
+        var publicRequest=new Requests.Group("Solicitações",new BigDecimal("100"),BigDecimal.ZERO,60,60,Requests.Visibility.PUBLIC,Requests.EntryMode.REQUEST,Requests.InvitePolicy.ALL_MEMBERS);
+        UUID requested=service.createGroup(f.owner,publicRequest).id();
+        UUID entry=administration.requestEntry(f.user,requested);assertEquals(entry,administration.requestEntry(f.user,requested));
+        assertTrue(service.groups(f.user,true).stream().anyMatch(g->g.id().equals(requested)&&g.requestPending()));
+        assertThrows(ApiError.class,()->administration.requests(f.other,requested));
+        administration.answerRequest(f.owner,requested,entry,true);
+        UUID second=administration.requestEntry(f.other,requested);
+        assertThrows(ApiError.class,()->administration.answerRequest(f.user,requested,second,true));
+        administration.setRole(f.owner,requested,f.user,new Requests.MemberRole(Requests.Role.MODERATOR));
+        administration.answerRequest(f.user,requested,second,true);assertEquals(3,administration.members(f.user,requested).size());
+    }
+    @Test void changingSettingsPreservesPublishedSnapshotsAndUpdatesFutureBets() throws Exception {
+        var f=adminCycle();
+        var request=new Requests.Group("Novo nome",new BigDecimal("250"),new BigDecimal("7"),900,300,Requests.Visibility.PUBLIC,Requests.EntryMode.REQUEST,Requests.InvitePolicy.MODERATORS);
+        assertThrows(ApiError.class,()->administration.configure(f.user,f.group,request));
+        administration.configure(f.owner,f.group,request);assertEquals("Novo nome",administration.settings(f.user,f.group).name());
+        assertEquals(60,database.queryForObject("SELECT extract(epoch FROM settlement_period)::bigint FROM bets WHERE id=?",Long.class,f.bet.id()));
+        var next=service.publish(f.owner,f.group,new Requests.Bet("Nova configuração",Requests.BetType.BINARY,null,null,NOW.get().plusSeconds(1200),BigDecimal.ZERO));
+        assertEquals(900,database.queryForObject("SELECT extract(epoch FROM settlement_period)::bigint FROM bets WHERE id=?",Long.class,next.id()));
+        assertEquals(300,database.queryForObject("SELECT extract(epoch FROM contest_period)::bigint FROM bets WHERE id=?",Long.class,next.id()));
+        money("100",service.wallet(f.user,f.group).availablePoints());
+        assertTrue(context.getBean(ChatService.class).groupMessages(f.user,f.group,null).messages().stream().anyMatch(m->next.id().equals(m.betId())));
+    }
+    @Test void ownerExitCancelsAuthoredBetsAndSuccessorUsesFirstEntry() throws Exception {
+        var f=adminCycle();stake(f,f.user,0,"10");
+        Instant now=NOW.get();
+        database.update("UPDATE memberships SET first_joined_at=?,joined_at=? WHERE group_id=? AND user_id=?",Timestamp.from(now.minusSeconds(100)),Timestamp.from(now.minusSeconds(100)),f.group,f.other);
+        NOW.set(now.plusSeconds(30));var exited=administration.leave(f.owner,f.group);
+        assertEquals(f.other,exited.successorId());assertEquals("CANCELLED",service.bet(f.user,f.bet.id()).state());money("100",service.wallet(f.user,f.group).availablePoints());
+        assertThrows(ApiError.class,()->context.getBean(ChatService.class).sendGroup(f.owner,f.group,new Requests.Message("Sem acesso",UUID.randomUUID())));
+        administration.leave(f.user,f.group);
+        var last=administration.leave(f.other,f.group);assertTrue(last.groupDeleted());
+        assertThrows(ApiError.class,()->service.joinPublicGroup(f.owner,f.group));
+        assertTrue(service.groups(f.owner,true).stream().noneMatch(g->g.id().equals(f.group)));
+        assertEquals(0,database.queryForObject("SELECT count(*) FROM current_group_members WHERE group_id=?",Integer.class,f.group));
+    }
+    @Test void deletingBetsRefundsPendingButDoesNotUndoSettledPayouts() throws Exception {
+        var f=adminCycle();stake(f,f.user,0,"30");
+        assertThrows(ApiError.class,()->resolutions.deleteByOwner(f.user,f.bet.id()));
+        resolutions.deleteByOwner(f.owner,f.bet.id());money("100",service.wallet(f.user,f.group).availablePoints());
+        assertThrows(ApiError.class,()->service.bet(f.user,f.bet.id()));assertTrue(service.bets(f.user,f.group).isEmpty());
+        assertTrue(context.getBean(ChatService.class).groupMessages(f.user,f.group,null).messages().stream().filter(m->f.bet.id().equals(m.betId())).allMatch(ChatService.Message::deleted));
+        var next=service.publish(f.owner,f.group,new Requests.Bet("Concluída",Requests.BetType.BINARY,null,null,NOW.get().plusSeconds(600),BigDecimal.ZERO));
+        service.confirm(f.user,next.id(),new Requests.Prediction(next.options().getFirst().id(),BigDecimal.TEN));
+        NOW.set(next.endsAt());resolutions.publish(f.owner,next.id(),next.options().getFirst().id());NOW.set(next.endsAt().plusSeconds(60));resolutions.process(next.id());
+        money("100",service.wallet(f.user,f.group).availablePoints());resolutions.deleteByOwner(f.owner,next.id());money("100",service.wallet(f.user,f.group).availablePoints());
+        assertEquals(1,database.queryForObject("SELECT count(*) FROM point_movements pm JOIN predictions p ON p.id=pm.prediction_id WHERE p.bet_id=? AND pm.kind='PAYOUT'",Integer.class,next.id()));
+        assertEquals(0,database.queryForObject("SELECT count(*) FROM bet_odds WHERE bet_id=?",Integer.class,next.id()));
+    }
+    void dailyHistory(Cycle f) {
+        Instant midnight=Instant.parse("2026-12-01T03:00:00Z"),noon=midnight.plusSeconds(43200);
+        database.update("DELETE FROM membership_periods WHERE group_id=?",f.group);database.update("DELETE FROM group_daily_rates WHERE group_id=?",f.group);
+        database.update("INSERT INTO group_daily_rates(group_id,points,starts_at,ends_at) VALUES (?,5,?,?),(?,7,?,NULL)",f.group,Timestamp.from(midnight),Timestamp.from(noon),f.group,Timestamp.from(noon));
+        database.update("INSERT INTO membership_periods(group_id,user_id,joined_at,left_at) VALUES (?,?,?,NULL),(?,?,?,?),(?,?,?,NULL),(?,?,?,?)",
+            f.group,f.owner,Timestamp.from(midnight.minusSeconds(3600)),
+            f.group,f.user,Timestamp.from(midnight.minusSeconds(3600)),Timestamp.from(midnight.plusSeconds(84600)),
+            f.group,f.user,Timestamp.from(midnight.plusSeconds(88200)),
+            f.group,f.other,Timestamp.from(midnight.plusSeconds(60)),Timestamp.from(midnight.plusSeconds(129600)));
+    }
+    @Test void dailyCreditsRecoverMidnightMembershipAndRateHistoryExactlyOnce() throws Exception {
+        var f=adminCycle();dailyHistory(f);NOW.set(Instant.parse("2026-12-03T03:00:00Z"));
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            var first=executor.submit(()->daily.credit(f.group));var second=executor.submit(()->daily.credit(f.group));
+            assertEquals(6,first.get(60,TimeUnit.SECONDS)+second.get(60,TimeUnit.SECONDS));
+        }
+        assertEquals(0,daily.credit(f.group));money("119",service.wallet(f.owner,f.group).availablePoints());money("112",service.wallet(f.user,f.group).availablePoints());money("107",service.wallet(f.other,f.group).availablePoints());
+        assertEquals(3,database.queryForObject("SELECT count(*) FROM group_daily_runs WHERE group_id=?",Integer.class,f.group));
+        assertEquals(6,database.queryForObject("SELECT count(*) FROM point_movements WHERE group_id=? AND kind='DAILY_CREDIT'",Integer.class,f.group));
+    }
+    @Test void dailyCreditFailureRollsBackRunAndBalances() throws Exception {
+        var f=adminCycle();dailyHistory(f);NOW.set(Instant.parse("2026-12-01T03:00:00Z"));
+        database.execute("CREATE FUNCTION fail_daily() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'falha simulada'; END $$");
+        database.execute("CREATE TRIGGER reject_daily BEFORE INSERT ON point_movements FOR EACH ROW WHEN (NEW.group_id='"+f.group+"'::uuid AND NEW.kind='DAILY_CREDIT') EXECUTE FUNCTION fail_daily()");
+        try {assertThrows(DataAccessException.class,()->daily.credit(f.group));assertEquals(0,database.queryForObject("SELECT count(*) FROM group_daily_runs WHERE group_id=?",Integer.class,f.group));money("100",service.wallet(f.owner,f.group).availablePoints());}
+        finally {database.execute("DROP TRIGGER reject_daily ON point_movements");database.execute("DROP FUNCTION fail_daily()");}
+        assertEquals(2,daily.credit(f.group));money("105",service.wallet(f.owner,f.group).availablePoints());
+    }
+    @Test void removalAndPredictionSerializeWithoutLosingReservedPoints() throws Exception {
+        var f=adminCycle();NOW.set(NOW.get().plusSeconds(30));
+        var start=new CountDownLatch(1);
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            var prediction=executor.submit(()->{start.await();try{stake(f,f.user,0,"30");return "OK";}catch(ApiError error){return error.code;}});
+            var removal=executor.submit(()->{start.await();return administration.remove(f.owner,f.group,f.user);});
+            start.countDown();String result=prediction.get(60,TimeUnit.SECONDS);removal.get(60,TimeUnit.SECONDS);
+            assertTrue(result.equals("OK")||result.equals("ACCESS_DENIED"));
+            int confirmed=database.queryForObject("SELECT count(*) FROM predictions WHERE bet_id=? AND user_id=?",Integer.class,f.bet.id(),f.user);
+            money(confirmed==1?"70":"100",database.queryForObject("SELECT available_points FROM wallets WHERE group_id=? AND user_id=?",BigDecimal.class,f.group,f.user));
+            money(confirmed==1?"30":"0",database.queryForObject("SELECT reserved_points FROM wallets WHERE group_id=? AND user_id=?",BigDecimal.class,f.group,f.user));
+        }
+        resolutions.cancel(f.owner,f.bet.id());
+        money("100",database.queryForObject("SELECT available_points FROM wallets WHERE group_id=? AND user_id=?",BigDecimal.class,f.group,f.user));
+        money("0",database.queryForObject("SELECT reserved_points FROM wallets WHERE group_id=? AND user_id=?",BigDecimal.class,f.group,f.user));
+    }
 
     record Cycle(UUID owner,UUID user,UUID other,UUID group,BettingService.BetView bet,String ownerSubject,String userSubject,String otherSubject) {}
     Cycle cycle() throws Exception {

@@ -16,4 +16,5 @@ class ResolutionController {
     @PostMapping("/api/bets/{bet}/contests") ResolutionService.Resolution contest(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID bet) {return service.contest(identities.requireUser(jwt),bet);}
     @PostMapping("/api/bets/{bet}/decision") ResolutionService.Resolution decide(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID bet,@Valid @RequestBody Requests.Decision request) {return service.decide(identities.requireUser(jwt),bet,request);}
     @PostMapping("/api/bets/{bet}/cancel") ResolutionService.Resolution cancel(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID bet) {return service.cancel(identities.requireUser(jwt),bet);}
+    @PostMapping("/api/bets/{bet}/delete") void delete(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID bet) {service.deleteByOwner(identities.requireUser(jwt),bet);}
 }

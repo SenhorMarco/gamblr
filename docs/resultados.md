@@ -137,5 +137,6 @@ Com o frontend aberto, na pasta `frontend`:
 .\node_modules\.bin\playwright.cmd test
 ```
 
-Crédito diário, convites, administração de membros e a arquitetura definitiva do
-frontend continuam fora desta entrega. Prêmios internos permanecem em aberto.
+Crédito diário, convites e administração de membros foram acrescentados pela
+V009, conforme [administracao.md](administracao.md). A arquitetura definitiva do
+frontend e os prêmios internos permanecem em aberto.

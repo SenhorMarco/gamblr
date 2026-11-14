@@ -1,5 +1,5 @@
 // Conversas e amizades usam somente as APIs autenticadas do Spring.
-export function createChats({api,profile,onPrivate}) {
+export function createChats({api,profile,onPrivate,onBet}) {
   const $=id=>document.getElementById(id);
   let active=false,epoch=0,scope=null,friends=[],friendsLoading=false;
   const node=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
@@ -53,6 +53,7 @@ export function createChats({api,profile,onPrivate}) {
           const row=node('article','chat-message'+(message.authorId===profile()?.id?' own':''));row.dataset.message=message.id;
           const heading=node('div','message-heading'),time=node('time','',new Date(message.sentAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));time.dateTime=message.sentAt;
           heading.append(node('strong','',message.displayName),time);row.append(heading,node('p',message.deleted?'deleted-message':'',message.deleted?'Mensagem apagada pela moderação.':message.body));
+          if(message.betId&&!message.deleted&&onBet){const button=node('button','button secondary','Ver aposta');button.type='button';button.onclick=()=>onBet(message.betId);row.append(button);}
           if(current.kind==='group'&&page.canModerate&&!message.deleted) {
             const remove=node('button','delete-message','Apagar');remove.type='button';remove.setAttribute('aria-label',`Apagar mensagem de ${message.displayName}`);
             remove.onclick=async()=>{remove.disabled=true;try{await api('writer',`${path(current)}/${message.id}/delete`,{method:'POST'});if(scope===current)await refresh();}catch(error){if(scope===current)chatError(prefix,error);}finally{remove.disabled=false;}};row.append(remove);

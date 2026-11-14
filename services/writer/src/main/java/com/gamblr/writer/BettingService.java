@@ -13,9 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class BettingService {
     private final JdbcTemplate jdbc;
     private final ServerTime time;
-    BettingService(JdbcTemplate jdbc, ServerTime time) { this.jdbc = jdbc; this.time = time; }
+    private final GroupLock locks;
+    BettingService(JdbcTemplate jdbc, ServerTime time,GroupLock locks) { this.jdbc = jdbc; this.time = time;this.locks=locks; }
     record GroupView(UUID id, UUID ownerId, String name) {}
-    record GroupSummary(UUID id, UUID ownerId, String name, String visibility, String entryMode, boolean member, long memberCount) {}
+    record GroupSummary(UUID id, UUID ownerId, String name, String visibility, String entryMode, boolean member, long memberCount,boolean requestPending) {}
     record WalletView(UUID groupId, UUID userId, BigDecimal availablePoints, BigDecimal reservedPoints) {}
     record OptionView(UUID id, String label, int position) {}
     record BetView(UUID id, UUID groupId, UUID authorId, String question, String type,
@@ -30,19 +31,20 @@ public class BettingService {
         return jdbc.query("""
             SELECT g.id,g.owner_id,g.name,g.visibility,g.entry_mode,
                 EXISTS(SELECT 1 FROM memberships m WHERE m.group_id=g.id AND m.user_id=? AND m.left_at IS NULL) AS member,
-                (SELECT count(*) FROM memberships m WHERE m.group_id=g.id AND m.left_at IS NULL) AS member_count
+                (SELECT count(*) FROM memberships m WHERE m.group_id=g.id AND m.left_at IS NULL) AS member_count,
+                EXISTS(SELECT 1 FROM group_join_requests r WHERE r.group_id=g.id AND r.user_id=? AND r.state='PENDING') AS request_pending
             FROM groups g
-            WHERE ((? = true AND g.visibility='PUBLIC' AND g.entry_mode='IMMEDIATE')
+            WHERE g.deleted_at IS NULL AND ((? = true AND g.visibility='PUBLIC')
                 OR (? = false AND EXISTS(SELECT 1 FROM memberships m WHERE m.group_id=g.id AND m.user_id=? AND m.left_at IS NULL)))
             ORDER BY g.created_at DESC,g.id
             """, (rs,row) -> new GroupSummary(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),
-                rs.getString(3),rs.getString(4),rs.getString(5),rs.getBoolean(6),rs.getLong(7)),
-            user, discover, discover, user);
+                rs.getString(3),rs.getString(4),rs.getString(5),rs.getBoolean(6),rs.getLong(7),rs.getBoolean(8)),
+            user,user, discover, discover, user);
     }
     @Transactional
     public List<BetCard> bets(UUID user, UUID group) {
         member(group,user);
-        var ids = jdbc.query("SELECT id FROM bets WHERE group_id=? ORDER BY published_at DESC,id",(rs,row)->rs.getObject(1,UUID.class),group);
+        var ids = jdbc.query("SELECT id FROM bets WHERE group_id=? AND deleted_at IS NULL ORDER BY published_at DESC,id",(rs,row)->rs.getObject(1,UUID.class),group);
         return ids.stream().map(id -> {
             var own = jdbc.query("SELECT id,option_id,points,confirmed_at FROM predictions WHERE bet_id=? AND user_id=?",
                 (rs,row)->new PredictionView(rs.getObject(1,UUID.class),id,rs.getObject(2,UUID.class),rs.getBigDecimal(3),rs.getTimestamp(4).toInstant()),id,user);
@@ -75,15 +77,25 @@ public class BettingService {
     }
     @Transactional
     public WalletView joinPublicGroup(UUID user, UUID group) {
-        var groups = jdbc.query("SELECT initial_points,visibility,entry_mode FROM groups WHERE id=? FOR UPDATE", (rs, row) ->
+        locks.lock(group);
+        var groups = jdbc.query("SELECT initial_points,visibility,entry_mode FROM groups WHERE id=? AND deleted_at IS NULL FOR UPDATE", (rs, row) ->
             new Object[]{rs.getBigDecimal(1), rs.getString(2), rs.getString(3)}, group);
         if (groups.isEmpty()) throw ApiError.missing();
         var config = groups.getFirst();
         if (!"PUBLIC".equals(config[1]) || !"IMMEDIATE".equals(config[2])) throw ApiError.forbidden();
+        return admit(user,group);
+    }
+    @Transactional
+    public WalletView admit(UUID user,UUID group) {
+        locks.lock(group);
+        var configs=jdbc.query("SELECT initial_points FROM groups WHERE id=? AND deleted_at IS NULL FOR UPDATE",(rs,row)->rs.getBigDecimal(1),group);
+        if(configs.isEmpty())throw ApiError.missing();
         var members = jdbc.query("SELECT left_at IS NULL AS active FROM memberships WHERE group_id=? AND user_id=? FOR UPDATE",
             (rs, row) -> rs.getBoolean(1), group, user);
-        if (members.isEmpty()) creditFirstEntry(group, user, (BigDecimal) config[0]);
-        else if (!members.getFirst()) jdbc.update("UPDATE memberships SET joined_at=clock_timestamp(),left_at=NULL WHERE group_id=? AND user_id=?", group, user);
+        if (members.isEmpty()) creditFirstEntry(group, user, configs.getFirst());
+        else if (!members.getFirst()) jdbc.update("UPDATE memberships SET joined_at=clock_timestamp(),left_at=NULL,role='MEMBER' WHERE group_id=? AND user_id=?", group, user);
+        jdbc.update("UPDATE group_join_requests SET state='APPROVED' WHERE group_id=? AND user_id=? AND state='PENDING'",group,user);
+        jdbc.update("UPDATE group_invitations SET state='ACCEPTED' WHERE group_id=? AND user_id=? AND state='PENDING'",group,user);
         return wallet(user, group);
     }
     @Transactional
@@ -96,8 +108,9 @@ public class BettingService {
     }
     @Transactional
     public BetView publish(UUID user, UUID group, Requests.Bet request) {
+        locks.lock(group);
         // Segura a configuracao do grupo enquanto captura o snapshot dos prazos.
-        if (jdbc.query("SELECT id FROM groups WHERE id=? FOR SHARE", (rs, row) -> rs.getObject(1), group).isEmpty()) throw ApiError.missing();
+        if (jdbc.query("SELECT id FROM groups WHERE id=? AND deleted_at IS NULL FOR SHARE", (rs, row) -> rs.getObject(1), group).isEmpty()) throw ApiError.missing();
         member(group, user);
         List<String> labels;
         if (request.type() == Requests.BetType.BINARY) {
@@ -125,11 +138,12 @@ public class BettingService {
             request.verificationCriterion(), request.minimumPoints(), group);
         for (int position = 0; position < labels.size(); position++)
             jdbc.update("INSERT INTO bet_options(id,bet_id,label,position) VALUES (?,?,?,?)", UUID.randomUUID(), id, labels.get(position), position);
+        jdbc.update("INSERT INTO group_messages(group_id,author_id,client_id,body,bet_id) VALUES (?,?,?,left(?,4000),?)",group,user,id,"Aposta: "+request.question().strip(),id);
         return bet(user, id);
     }
     @Transactional
     public BetView bet(UUID user, UUID bet) {
-        var groupIds = jdbc.query("SELECT group_id FROM bets WHERE id=?", (rs, row) -> rs.getObject(1, UUID.class), bet);
+        var groupIds = jdbc.query("SELECT group_id FROM bets WHERE id=? AND deleted_at IS NULL", (rs, row) -> rs.getObject(1, UUID.class), bet);
         if (groupIds.isEmpty()) throw ApiError.missing();
         member(groupIds.getFirst(), user);
         var options = jdbc.query("SELECT id,label,position FROM bet_options WHERE bet_id=? ORDER BY position",
@@ -142,9 +156,11 @@ public class BettingService {
     }
     @Transactional
     public PredictionView confirm(UUID user, UUID bet, Requests.Prediction request) {
+        var groupIds=jdbc.query("SELECT group_id FROM bets WHERE id=? AND deleted_at IS NULL",(rs,row)->rs.getObject(1,UUID.class),bet);
+        if(groupIds.isEmpty())throw ApiError.missing();locks.lock(groupIds.getFirst());
         // Ordem de bloqueio: aposta -> integrante -> carteira. A carteira serializa
         // reservas do mesmo usuario mesmo quando as apostas sao diferentes.
-        var bets = jdbc.query("SELECT group_id,author_id,minimum_points,predictions_close_at,state FROM bets WHERE id=? FOR UPDATE",
+        var bets = jdbc.query("SELECT group_id,author_id,minimum_points,predictions_close_at,state FROM bets WHERE id=? AND deleted_at IS NULL FOR UPDATE",
             (rs, row) -> new LockedBet(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getBigDecimal(3), rs.getTimestamp(4).toInstant(), rs.getString(5)), bet);
         if (bets.isEmpty()) throw ApiError.missing();
         var locked = bets.getFirst();

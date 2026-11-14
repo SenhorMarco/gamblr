@@ -58,7 +58,8 @@ manualmente, como as anteriores; os testes não a aplicam ao schema do projeto.
   uma transação aguardou outra. Saída/remoção bloqueia o acesso ao chat.
 - RF-18: dono e moderadores atuais podem apagar mensagens do grupo visíveis
   para eles. A exclusão é lógica: o corpo é omitido da API e aparece um aviso
-  de moderação. Esta etapa não adiciona gestão de moderadores ou remoção de membros.
+  de moderação. Gestão de moderadores e remoção são acrescentadas pela V009,
+  conforme [administracao.md](administracao.md).
 - RF-16: chat privado exige amizade aceita em todas as leituras e escritas.
   Pedidos recusados não aparecem na lista e podem ser enviados novamente.
 - RF-32: não existem endpoints de apostas em conversas privadas.
