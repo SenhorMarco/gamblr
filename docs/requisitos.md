@@ -123,9 +123,9 @@ RF-13 Contagem e odds em tempo real — Todos os membros podem acompanhar, em te
 
 RF-14 Privacidade dos palpites — Cada participante pode consultar somente a própria escolha e o valor que apostou. Os dados compartilhados com o grupo são agregados por opção.
 
-**Status: Implementado** — View de odds calcula total de votos/votos da opção; interface exibe “—” sem votos.
+**Status: Implementado** — View de odds calcula total de pontos/pontos da opção (V010); interface exibe “—” sem pontos e barra proporcional aproximada.
 
-RF-05 Cálculo da odd decimal — Para uma opção com votos, divide-se o total de votos da aposta pelo número de votos daquela opção. Por exemplo, 2 votos de um total de 5 produzem odd 2,50. Opções sem votos exibem “—”. O pagamento segue o RF-07.
+RF-05 Cálculo da odd decimal — Para uma opção com pontos apostados, divide-se o total de pontos da aposta pelo total de pontos daquela opção. Por exemplo, 40 pontos de um total de 100 produzem odd 2,50. Opções sem pontos exibem “—”. O pagamento segue o RF-07.
 
 Apuração e contestação das apostas de grupo
 
@@ -149,7 +149,7 @@ Distribuição dos pontos
 
 **Status: Implementado** — Rateio proporcional, arredondamento para baixo e tratamento de vencedores com zero pontos implementados em `ResolutionService`.
 
-RF-07 Pagamento aos vencedores — Cada vencedor recupera integralmente os pontos que apostou e recebe uma parcela dos pontos perdidos. Para calcular a parcela, multiplica-se o total de pontos perdidos pelo valor apostado pelo vencedor e divide-se pelo total de pontos apostados pelos vencedores. O sistema arredonda a parcela individual para baixo e deixa a sobra sem distribuição. A odd decimal é calculada separadamente, pela contagem de votos.
+RF-07 Pagamento aos vencedores — Cada vencedor recupera integralmente os pontos que apostou e recebe uma parcela dos pontos perdidos. Para calcular a parcela, multiplica-se o total de pontos perdidos pelo valor apostado pelo vencedor e divide-se pelo total de pontos apostados pelos vencedores. O sistema arredonda a parcela individual para baixo e deixa a sobra sem distribuição. A odd decimal é calculada pela proporção dos pontos apostados.
 
 Se a opção vencedora tiver apenas palpites de zero pontos, a aposta é encerrada sem distribuir os pontos perdidos. Os palpites vencedores recebem zero e os pontos dos perdedores são descontados definitivamente. Decisão confirmada para evitar divisão por zero.
 
@@ -173,7 +173,7 @@ Critérios de aceitação
 
 • Prazos. Uma aposta publicada às 10h com término às 20h pode ser cancelada pelo autor às 10h45. Às 11h01 o cancelamento pelo autor é rejeitado. Às 19h o servidor passa a rejeitar novos palpites.
 
-• Pontos e odd. Ana aposta 10 pontos e Bruno aposta 30 na opção vencedora. Três pessoas apostam 80 pontos no total nas opções perdedoras. A odd da opção vencedora é 2,50 e os créditos finais são 30 pontos para Ana e 90 para Bruno.
+• Pontos e odd. Ana aposta 10 pontos e Bruno aposta 30 na opção vencedora. Três pessoas apostam 80 pontos no total nas opções perdedoras. A odd da opção vencedora é 3,00 e os créditos finais são 30 pontos para Ana e 90 para Bruno.
 
 • Contestação. Se a única contestação for removida às 21h45 e o prazo terminar às 22h, a aposta é apurada às 22h. Se a remoção ocorrer às 22h15, a aposta é apurada nesse momento. O palpite de quem contestou continua válido.
 

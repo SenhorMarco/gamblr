@@ -130,7 +130,7 @@ function renderDetail() {
   if(bet.verificationCriterion)detail.append(el('p','criterion',`Verificação: ${bet.verificationCriterion}`));
   const form=el('form');form.id='prediction-form';const options=el('div','option-grid');
   for(const option of bet.options){const label=el('label','option');const input=el('input');input.type='radio';input.name='option';input.value=option.id;input.required=true;input.disabled=!!card.myPrediction || bet.authorId===state.profile.id || !open(bet);if(card.myPrediction?.optionId===option.id)input.checked=true;
-    label.append(input,el('span','option-name',option.label));const data=el('span','option-data'),odd=el('span','option-odd','—'),votes=el('span','option-votes','carregando');odd.dataset.odd=option.id;votes.dataset.votes=option.id;data.append(odd,votes);label.append(data);options.append(label);}
+    label.append(input,el('span','option-name',option.label));const data=el('span','option-data'),odd=el('span','option-odd','—'),votes=el('span','option-votes','carregando');odd.dataset.odd=option.id;votes.dataset.votes=option.id;data.append(odd,votes);label.append(data);const bar=el('meter','option-share');bar.min=0;bar.max=100;bar.value=0;bar.dataset.share=option.id;bar.setAttribute('aria-label',`Proporção aproximada dos pontos em ${option.label}`);label.append(bar);options.append(label);}
   form.append(options);
   if(card.myPrediction){const option=bet.options.find(option=>option.id===card.myPrediction.optionId);form.append(el('div','confirmed-box',`✓ Seu palpite: ${option?.label || 'confirmado'} · ${points(card.myPrediction.points)} pontos reservados. A escolha e o valor são definitivos.`));}
   else if(bet.authorId===state.profile.id)form.append(el('p','prediction-locked','Você publicou esta aposta. Acompanhe os palpites do grupo; o autor não pode participar.'));
@@ -144,7 +144,7 @@ function renderDetail() {
 }
 async function refreshOdds() {
   const id=state.selected;if(!id || state.mode!=='group')return;
-  try{const data=await api('reader',`/api/bets/${id}/odds`);if(state.selected!==id)return;for(const option of data.options){const odd=document.querySelector(`[data-odd="${option.optionId}"]`),votes=document.querySelector(`[data-votes="${option.optionId}"]`);if(odd)odd.textContent=option.decimalOdds===null?'—':String(option.decimalOdds).replace('.',',');if(votes)votes.textContent=`${option.votes} voto${option.votes===1?'':'s'}`;}}
+  try{const data=await api('reader',`/api/bets/${id}/odds`);if(state.selected!==id)return;for(const option of data.options){const odd=document.querySelector(`[data-odd="${option.optionId}"]`),votes=document.querySelector(`[data-votes="${option.optionId}"]`);const bar=document.querySelector(`[data-share="${option.optionId}"]`);if(bar){const value=Number(option.decimalOdds);bar.value=Number.isFinite(value)&&value>0?Math.min(100,100/value):0;bar.title=`Aproximadamente ${bar.value.toFixed(1)}% dos pontos`; }if(odd)odd.textContent=option.decimalOdds===null?'—':String(option.decimalOdds).replace('.',',');if(votes)votes.textContent=`${option.votes} voto${option.votes===1?'':'s'}`;}}
   catch{if(state.selected===id)document.querySelectorAll('[data-votes]').forEach(node=>node.textContent='odds indisponíveis');}
 }
 function renderRanking() {

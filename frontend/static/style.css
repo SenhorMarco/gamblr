@@ -309,3 +309,5 @@ details:not(.ranking-panel) > summary { font-size: 11px; color: #677c9e; cursor:
   .form-grid { grid-template-columns: 1fr; gap: 0; }
   dialog { padding: 20px; }
 }
+
+.option-share { display:block; grid-column:1 / -1; width:100%; height:12px; accent-color:#3b5998; }

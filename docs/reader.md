@@ -156,3 +156,11 @@ ou escritas. As credenciais administrativas só são usadas pelo teste para
 preparar/remover seu schema; o serviço Flask não as utiliza.
 
 Nenhuma migração foi aplicada automaticamente ao schema de domínio pelo teste.
+
+## Odds por pontos (V010)
+
+Aplique `database/migrations/V010__point_based_odds.sql` após V009 no Supabase.
+A odd passa a ser total de pontos dividido pelos pontos da opção. Sem pontos,
+a odd é nula. Votos continuam sendo uma contagem separada. A barra da interface
+mostra a participação aproximada dos pontos, calculada pela odd arredondada.
+Recarregue a página após atualizar os arquivos.
