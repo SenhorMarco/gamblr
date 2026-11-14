@@ -315,3 +315,9 @@ details:not(.ranking-panel) > summary { font-size: 11px; color: #677c9e; cursor:
 .odds-legend { display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:14px; }
 .odds-legend-item { display:inline-flex; align-items:center; gap:6px; font-size:12px; }
 .odds-swatch { display:inline-block; width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+.feed-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:16px; }
+.feed-group-filter { grid-column:1 / -1; border:1px solid #dce2eb; border-radius:8px; padding:12px; }
+#feed-groups { display:flex; flex-wrap:wrap; gap:12px; }
+.feed-group-choice { display:inline-flex; align-items:center; gap:6px; }
+.feed-group-choice input { width:auto; }

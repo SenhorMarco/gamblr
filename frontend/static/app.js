@@ -1,3 +1,4 @@
+import {filterFeed} from './feed.js';
 import {AuthClient, ClientError} from './auth.js';
 import {createChats} from './chat.js';
 import {createResolutions} from './resolution.js';
@@ -39,7 +40,7 @@ async function api(service,path,{method='GET',body,headers={}}={},retried=false)
   return data;
 }
 function clearWorkspace() {state.serial++;state.group=null;state.groups=[];state.bets=[];state.selected=null;state.profile=null;state.detailKey='';state.listKey='';state.refreshing=false;$('group-list').replaceChildren();$('bets-list').replaceChildren();$('bet-detail').replaceChildren();$('ranking-list').replaceChildren();}
-function signedOut() {groupTools.reset();resolutions.reset();chats.reset();clearWorkspace();state.search='';state.publicGroups=[];$('group-search').value='';$('auth-form').reset();authMode(false);show($('app-view'),false);show($('auth-view'));document.querySelectorAll('dialog[open]').forEach(d=>d.close());}
+function signedOut() {feedEntries=[];feedPartial=false;$('feed-list').replaceChildren();$('feed-groups').replaceChildren();$('feed-filters').reset();groupTools.reset();resolutions.reset();chats.reset();clearWorkspace();state.search='';state.publicGroups=[];$('group-search').value='';$('auth-form').reset();authMode(false);show($('app-view'),false);show($('auth-view'));document.querySelectorAll('dialog[open]').forEach(d=>d.close());}
 async function enter() {
   const user=auth.session.user;
   state.profile=await api('writer','/api/me',{method:'POST',body:{displayName:user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Integrante'}});
@@ -67,7 +68,22 @@ async function openFeed() {
   for(const id of ['explore-view','group-view','private-view','betting-column','empty-betting','new-bet-button'])show($(id),false);
   show($('new-group-button'));await loadFeed();
 }
-let feedLoading=false;
+let feedLoading=false,feedEntries=[],feedPartial=false;
+function renderFeed(){
+  const from=$('feed-from').value,to=$('feed-to').value;
+  const invalid=from&&to&&from>to;show($('feed-filter-error'),!!invalid);$('feed-filter-error').textContent=invalid?'A data inicial deve ser anterior ou igual à final.':'';
+  const entries=invalid?[]:filterFeed(feedEntries,{status:$('feed-state').value,groups:Array.from($('feed-groups').querySelectorAll('input:checked')).map(input=>input.value),from,to,query:$('feed-query').value});
+
+    const fragment=document.createDocumentFragment();
+    for(const {group,bet} of entries){
+      const card=el('article','public-card');card.append(el('p','muted',group.name),el('h3','',bet.question),el('p','',`${date(bet.publishedAt)} · ${betStatus(bet)}`));
+      const button=el('button','button secondary','Ver aposta ↗');button.type='button';
+      button.onclick=async()=>{button.disabled=true;try{await selectGroup(group);if(state.mode!=='group'||state.group?.id!==group.id)return;if(!state.bets.some(item=>item.bet.id===bet.id))throw new ClientError('Esta aposta não está mais disponível.');state.selected=bet.id;state.detailKey='';state.listKey='';$('bet-filter').value='all';renderBets();renderDetail();refreshOdds();$('bet-detail').scrollIntoView({behavior:'smooth',block:'nearest'});}catch(error){toast(error.message,true);}finally{button.disabled=false;}};
+      card.append(button);fragment.append(card);
+    }
+    $('feed-list').replaceChildren(fragment);
+    $('feed-status').textContent=(feedPartial?'Alguns grupos não puderam ser carregados. ':'')+(invalid?'':entries.length?`${entries.length} aposta(s) encontrada(s).`:feedEntries.length?'Nenhuma aposta corresponde aos filtros.':'Nenhuma aposta disponível nos seus grupos.');
+}
 async function loadFeed() {
   if(feedLoading)return;feedLoading=true;const serial=state.serial;
   $('feed-status').textContent='Carregando apostas…';
@@ -78,15 +94,10 @@ async function loadFeed() {
     state.groups=groups;renderGroups();
     const entries=results.filter(result=>result.status==='fulfilled').flatMap(result=>result.value.cards.map(card=>({group:result.value.group,bet:card.bet})));
     entries.sort((a,b)=>new Date(b.bet.publishedAt)-new Date(a.bet.publishedAt)||a.bet.id.localeCompare(b.bet.id));
-    const fragment=document.createDocumentFragment();
-    for(const {group,bet} of entries){
-      const card=el('article','public-card');card.append(el('p','muted',group.name),el('h3','',bet.question),el('p','',`${date(bet.publishedAt)} · ${betStatus(bet)}`));
-      const button=el('button','button secondary','Ver aposta ↗');button.type='button';
-      button.onclick=async()=>{button.disabled=true;try{await selectGroup(group);if(state.mode!=='group'||state.group?.id!==group.id)return;if(!state.bets.some(item=>item.bet.id===bet.id))throw new ClientError('Esta aposta não está mais disponível.');state.selected=bet.id;state.detailKey='';state.listKey='';$('bet-filter').value='all';renderBets();renderDetail();refreshOdds();$('bet-detail').scrollIntoView({behavior:'smooth',block:'nearest'});}catch(error){toast(error.message,true);}finally{button.disabled=false;}};
-      card.append(button);fragment.append(card);
-    }
-    $('feed-list').replaceChildren(fragment);
-    $('feed-status').textContent=results.some(result=>result.status==='rejected')?'Não foi possível carregar todos os grupos. Use atualizar para tentar novamente.':entries.length?'':groups.length?'Seus grupos ainda não têm apostas.':'Entre em um grupo para acompanhar as apostas no Feed.';
+    feedEntries=entries;feedPartial=results.some(result=>result.status==='rejected');
+    const selected=new Set(Array.from($('feed-groups').querySelectorAll('input:checked')).map(input=>input.value));
+    $('feed-groups').replaceChildren(...groups.map(group=>{const label=el('label','feed-group-choice'),input=el('input');input.type='checkbox';input.value=group.id;input.checked=selected.has(group.id);label.append(input,document.createTextNode(group.name));return label;}));
+    renderFeed();
   }catch(error){if(state.mode==='feed'&&serial===state.serial){$('feed-list').replaceChildren();$('feed-status').textContent=error.message;}}
   finally{feedLoading=false;}
 }
@@ -198,6 +209,9 @@ function authMode(signup) {state.signup=signup;show($('name-label'),signup);$('a
 $('login-tab').onclick=()=>authMode(false);$('signup-tab').onclick=()=>authMode(true);
 $('auth-form').onsubmit=event=>{event.preventDefault();submit(event.currentTarget,async()=>{const email=$('auth-email').value.trim(),password=$('auth-password').value;if(state.signup){const data=await auth.signUp(email,password,$('auth-name').value.trim());if(!data.access_token){$('auth-password').value='';authMode(false);$('auth-info').textContent='Cadastro solicitado. Confira seu e-mail para confirmar a conta antes de entrar.';show($('auth-info'));return;}}else await auth.signIn(email,password);await enter();});};
 $('logout-button').onclick=async()=>{try{await auth.logout();}catch{toast('Você saiu desta sessão. O serviço de autenticação não confirmou o encerramento remoto.',true);}};
+$('feed-filters').onsubmit=event=>event.preventDefault();
+$('feed-filters').oninput=()=>renderFeed();
+$('feed-filters').onreset=()=>setTimeout(()=>{ $('feed-groups').querySelectorAll('input').forEach(input=>input.checked=false);renderFeed();},0);
 $('feed-button').onclick=()=>openFeed().catch(error=>toast(error.message,true));
 $('explore-button').onclick=()=>explore().catch(error=>toast(error.message,true));
 $('home-button').onclick=$('explore-button').onclick;
