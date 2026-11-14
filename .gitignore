@@ -1,0 +1,21 @@
+# Credenciais locais (os modelos podem ser versionados)
+.env
+.env.*
+!.env.example
+
+# Ambiente Python local
+.venv/
+__pycache__/
+*.pyc
+
+# Certificados locais baixados do painel
+/certs/
+
+# Ferramentas e build Java locais
+/.tools/
+**/target/
+**/.gradle/
+**/build/
+**/node_modules/
+/frontend/test-results/
+/frontend/playwright-report/
