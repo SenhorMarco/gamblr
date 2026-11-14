@@ -30,11 +30,11 @@ const betStatus = bet => bet.state==='SETTLED'?'Concluída':bet.state==='CANCELL
 function toast(message,error=false) {clearTimeout(toastTimer);$('toast').textContent=message;$('toast').className=error?'error':'';show($('toast'));toastTimer=setTimeout(()=>show($('toast'),false),5500);}
 function errorIn(form,error) {const target=form.querySelector('.form-error');target.textContent=error.message || 'Não foi possível concluir a operação.';show(target);}
 async function submit(form, action) {const button=form.querySelector('button[type=submit]');button.disabled=true;show(form.querySelector('.form-error'),false);try{await action();}catch(error){errorIn(form,error);}finally{button.disabled=false;}}
-async function api(service,path,{method='GET',body,headers={}}={},retried=false) {
+async function api(service,path,{method='GET',body,headers={},signal}={},retried=false) {
   const token=await auth.token(); let response;
-  try {response=await fetch(`/${service}${path}`,{method,headers:{...headers,Authorization:`Bearer ${token}`,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});}
-  catch {throw new ClientError('Conexão interrompida. Confira o estado antes de repetir uma operação.');}
-  if(response.status===401 && !retried) {await auth.refresh();return api(service,path,{method,body,headers},true);}
+  try {response=await fetch(`/${service}${path}`,{method,signal,headers:{...headers,Authorization:`Bearer ${token}`,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});}
+  catch(error) {if(error.name==='AbortError')throw error;throw new ClientError('Conexão interrompida. Confira o estado antes de repetir uma operação.');}
+  if(response.status===401 && !retried) {await auth.refresh();return api(service,path,{method,body,headers,signal},true);}
   const data=await response.json().catch(()=>({}));
   if(!response.ok) {if(response.status===401)auth.clear();throw new ClientError(data.message || 'Não foi possível concluir a operação.',response.status,data.code);}
   return data;
@@ -54,6 +54,7 @@ async function loadGroups(preferred) {
   if(next)await selectGroup(next);else if(groups.length)await selectGroup(groups[0]);else await explore();
 }
 function renderGroups() {
+  if(state.mode!=='group'&&oddsRequest){oddsRequest.controller.abort();oddsRequest=null;}
   show($('feed-view'),state.mode==='feed');$('feed-button').classList.toggle('active',state.mode==='feed');
   const fragment=document.createDocumentFragment();
   for(const group of state.groups.filter(matchesSearch)){const button=el('button','group-nav'+(state.group?.id===group.id?' active':''));button.type='button';button.append(el('span','group-icon',group.name.slice(0,1).toUpperCase()),el('span','',group.name));button.onclick=()=>selectGroup(group).catch(error=>toast(error.message,true));fragment.append(button);}
@@ -144,7 +145,7 @@ async function refreshGroup(force=false) {
     if(bets.status==='fulfilled'){state.bets=bets.value;if(!state.bets.some(card=>card.bet.id===state.selected))state.selected=state.bets[0]?.bet.id || null;renderBets();renderDetail();}
     else if(!state.bets.length)$('bets-list').replaceChildren(el('p','form-error',bets.reason.message));
     if(ranking.status==='fulfilled'){state.ranking=ranking.value.ranking;renderRanking();show($('ranking-error'),false);}else{$('ranking-error').textContent='Ranking indisponível. Confira se o serviço de consultas está em execução.';show($('ranking-error'));}
-    await refreshOdds();resolutions.refresh();
+    refreshOdds();resolutions.refresh();
   }finally{if(serial===state.serial)state.refreshing=false;}
 }
 function privateConversation(friend=null) {
@@ -189,13 +190,14 @@ function renderDetail() {
   detail.append(form);resolutions.attach(bet,detail);
   if(state.group?.ownerId===state.profile.id){const remove=el('button','button secondary delete-bet','Apagar aposta');remove.id='delete-bet-button';remove.type='button';const note=el('p','prediction-note',active(bet)?'Apagar cancela esta aposta e devolve todas as reservas.':'Apagar oculta esta aposta e preserva os pagamentos já concluídos.');detail.append(note,remove);remove.onclick=async()=>{remove.disabled=true;try{await api('writer',`/api/bets/${bet.id}/delete`,{method:'POST'});state.selected=null;state.detailKey='';await refreshGroup(true);chats.refresh();toast('Aposta apagada.');}catch(error){toast(error.message,true);remove.disabled=false;}};}
 }
-let oddsVersion = null, oddsBusy = false;
+let oddsVersion = null, oddsRequest = null;
 async function refreshOdds(live=false) {
-  const id=state.selected;if(!id || state.mode!=='group' || oddsBusy)return;
-  oddsBusy=true;
-  try{const data=await api('reader',`/api/bets/${id}/odds`,{headers:live&&oddsVersion?.id===id?{'X-Odds-Version':oddsVersion.version}:{}});oddsVersion={id,version:data.version};if(state.selected!==id)return;for(const option of data.options){const odd=document.querySelector(`[data-odd="${option.optionId}"]`),votes=document.querySelector(`[data-votes="${option.optionId}"]`);const bar=document.querySelector(`[data-share="${option.optionId}"]`);if(bar){const total=Number(data.totalVotes),share=total>0?Number(option.votes)/total:0;bar.style.flexGrow=String(share);bar.title=`${option.label}: ${option.votes} voto(s), ${(share*100).toFixed(1)}% das pessoas`;bar.textContent=share>=0.08?`${(share*100).toFixed(0)}%`:''; }if(odd)odd.textContent=option.decimalOdds===null?'—':String(option.decimalOdds).replace('.',',');if(votes)votes.textContent=`${option.votes} voto${option.votes===1?'':'s'}`;}const distribution=document.querySelector('.odds-distribution');if(distribution)distribution.setAttribute('aria-label',Array.from(distribution.children).map(segment=>segment.title).join('; '));}
-  catch{if(state.selected===id)document.querySelectorAll('[data-votes]').forEach(node=>node.textContent='odds indisponíveis');}
-  finally{oddsBusy=false;}
+  const id=state.selected;if(!id || state.mode!=='group')return;
+  if(oddsRequest){if(live&&oddsRequest.id===id)return;oddsRequest.controller.abort();}
+  const pending={id,controller:new AbortController()};oddsRequest=pending;
+  try{const data=await api('reader',`/api/bets/${id}/odds`,{signal:pending.controller.signal,headers:live&&oddsVersion?.id===id?{'X-Odds-Version':oddsVersion.version}:{}});if(oddsRequest!==pending||state.selected!==id||state.mode!=='group')return;oddsVersion={id,version:data.version};for(const option of data.options){const odd=document.querySelector(`[data-odd="${option.optionId}"]`),votes=document.querySelector(`[data-votes="${option.optionId}"]`);const bar=document.querySelector(`[data-share="${option.optionId}"]`);if(bar){const total=Number(data.totalVotes),share=total>0?Number(option.votes)/total:0;bar.style.flexGrow=String(share);bar.title=`${option.label}: ${option.votes} voto(s), ${(share*100).toFixed(1)}% das pessoas`;bar.textContent=share>=0.08?`${(share*100).toFixed(0)}%`:''; }if(odd)odd.textContent=option.decimalOdds===null?'—':String(option.decimalOdds).replace('.',',');if(votes)votes.textContent=`${option.votes} voto${option.votes===1?'':'s'}`;}const distribution=document.querySelector('.odds-distribution');if(distribution)distribution.setAttribute('aria-label',Array.from(distribution.children).map(segment=>segment.title).join('; '));}
+  catch(error){if(error.name!=='AbortError'&&state.selected===id)document.querySelectorAll('[data-votes]').forEach(node=>node.textContent='odds indisponíveis');}
+  finally{if(oddsRequest===pending)oddsRequest=null;}
 }
 async function followOdds(){while(true){if(auth?.session&&state.profile&&!document.hidden&&state.mode==='group'&&state.selected)await refreshOdds(true);await new Promise(resolve=>setTimeout(resolve,500));}}
 followOdds();

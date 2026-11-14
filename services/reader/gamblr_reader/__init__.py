@@ -170,13 +170,15 @@ def create_app(overrides=None):
         version = hashlib.sha256(repr(rows).encode()).hexdigest()
         while previous == version and time.monotonic() < deadline:
             # Cada leitura precisa de um snapshot novo, inclusive para revogacoes.
-            connection = g.pop("database", None)
-            if connection is not None:
-                try:
-                    connection.rollback()
-                finally:
-                    connection.close()
+            connection = g.database
+            connection.rollback()
             time.sleep(0.5)
+            # Novo snapshot na mesma conexao TLS; nao segura transacao durante espera.
+            cursor = connection.cursor()
+            try:
+                cursor.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+            finally:
+                cursor.close()
             rows = query(f"SELECT group_id,option_id,label,position,votes,total_votes,decimal_odds FROM {schema_sql}.bet_odds WHERE bet_id=%s ORDER BY position", (bet_id,))
             if not rows:
                 raise ApiError(404, "NOT_FOUND", "Aposta nao encontrada.")

@@ -100,7 +100,8 @@ export function createChats({api,profile,onPrivate,onBet}) {
     } catch(error){if(session===epoch){$('friend-search-error').textContent=error.message;visible('friend-search-error',true);}}
     finally{button.disabled=false;}
   };
-  setInterval(()=>{if(active&&!document.hidden){refresh();refreshFriends();}},3000);
+  setInterval(()=>{if(active&&!document.hidden)refresh();},3000);
+  setInterval(()=>{if(active&&!document.hidden)refreshFriends();},15000);
   window.addEventListener('focus',()=>{if(active){refresh();refreshFriends();}});
   return {
     start(){active=true;epoch++;refreshFriends();},
