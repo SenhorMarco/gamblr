@@ -44,12 +44,21 @@ public class BettingService {
     @Transactional
     public List<BetCard> bets(UUID user, UUID group) {
         member(group,user);
-        var ids = jdbc.query("SELECT id FROM bets WHERE group_id=? AND deleted_at IS NULL ORDER BY published_at DESC,id",(rs,row)->rs.getObject(1,UUID.class),group);
-        return ids.stream().map(id -> {
-            var own = jdbc.query("SELECT id,option_id,points,confirmed_at FROM predictions WHERE bet_id=? AND user_id=?",
-                (rs,row)->new PredictionView(rs.getObject(1,UUID.class),id,rs.getObject(2,UUID.class),rs.getBigDecimal(3),rs.getTimestamp(4).toInstant()),id,user);
-            return new BetCard(bet(user,id),own.isEmpty()?null:own.getFirst());
-        }).toList();
+        Map<UUID,List<OptionView>> options = new HashMap<>();
+        jdbc.query("SELECT o.bet_id,o.id,o.label,o.position FROM bet_options o JOIN bets b ON b.id=o.bet_id WHERE b.group_id=? AND b.deleted_at IS NULL ORDER BY o.position", rs -> {
+            UUID id=rs.getObject(1,UUID.class);
+            options.computeIfAbsent(id, key -> new ArrayList<>()).add(new OptionView(rs.getObject(2,UUID.class),rs.getString(3),rs.getInt(4)));
+        },group);
+        Map<UUID,PredictionView> predictions = new HashMap<>();
+        jdbc.query("SELECT p.id,p.bet_id,p.option_id,p.points,p.confirmed_at FROM predictions p JOIN bets b ON b.id=p.bet_id WHERE b.group_id=? AND b.deleted_at IS NULL AND p.user_id=?", rs -> {
+            UUID id=rs.getObject(2,UUID.class);
+            predictions.put(id,new PredictionView(rs.getObject(1,UUID.class),id,rs.getObject(3,UUID.class),rs.getBigDecimal(4),rs.getTimestamp(5).toInstant()));
+        },group,user);
+        return jdbc.query("SELECT * FROM bets WHERE group_id=? AND deleted_at IS NULL ORDER BY published_at DESC,id", (rs,row) -> {
+            UUID id=rs.getObject("id",UUID.class);
+            var view=new BetView(id,group,rs.getObject("author_id",UUID.class),rs.getString("question"),rs.getString("type"),rs.getBigDecimal("minimum_points"),rs.getTimestamp("published_at").toInstant(),rs.getTimestamp("ends_at").toInstant(),rs.getTimestamp("predictions_close_at").toInstant(),rs.getTimestamp("author_cancel_until").toInstant(),rs.getString("state"),rs.getString("verification_criterion"),options.getOrDefault(id,List.of()));
+            return new BetCard(view,predictions.get(id));
+        },group);
     }
 
     private void member(UUID group, UUID user) {

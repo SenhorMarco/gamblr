@@ -7,6 +7,9 @@ const $ = id => document.getElementById(id);
 const state = {profile:null, groups:[], group:null, bets:[], selected:null, ranking:[], mode:'explore', serial:0, refreshing:false, detailKey:'', listKey:'', signup:false};
 state.search='';state.publicGroups=[];
 let auth, toastTimer;
+const betCache=new Map();
+const cachedBets=id=>{const item=betCache.get(id);return item&&Date.now()-item.time<60000?structuredClone(item.cards):null;};
+function rememberBets(id,cards){betCache.delete(id);betCache.set(id,{time:Date.now(),cards:structuredClone(cards)});if(betCache.size>20)betCache.delete(betCache.keys().next().value);}
 const groupTools=createGroupTools({api,profile:()=>state.profile,currentGroup:()=>state.mode==='group'?state.group:null,onChange:preferred=>loadGroups(preferred)});
 const chats=createChats({api,profile:()=>state.profile,onPrivate:friend=>privateConversation(friend),onBet:id=>{
   if(!state.bets.some(card=>card.bet.id===id)){toast('Esta aposta não está mais disponível.',true);return;}
@@ -37,10 +40,11 @@ async function api(service,path,{method='GET',body,headers={},signal}={},retried
   if(response.status===401 && !retried) {await auth.refresh();return api(service,path,{method,body,headers,signal},true);}
   const data=await response.json().catch(()=>({}));
   if(!response.ok) {if(response.status===401)auth.clear();throw new ClientError(data.message || 'Não foi possível concluir a operação.',response.status,data.code);}
+  if(method!=='GET')betCache.clear();
   return data;
 }
 function clearWorkspace() {state.serial++;state.group=null;state.groups=[];state.bets=[];state.selected=null;state.profile=null;state.detailKey='';state.listKey='';state.refreshing=false;$('group-list').replaceChildren();$('bets-list').replaceChildren();$('bet-detail').replaceChildren();$('ranking-list').replaceChildren();}
-function signedOut() {feedEntries=[];feedPartial=false;$('feed-list').replaceChildren();$('feed-groups').replaceChildren();$('feed-filters').reset();groupTools.reset();resolutions.reset();chats.reset();clearWorkspace();state.search='';state.publicGroups=[];$('group-search').value='';$('auth-form').reset();authMode(false);show($('app-view'),false);show($('auth-view'));document.querySelectorAll('dialog[open]').forEach(d=>d.close());}
+function signedOut() {betCache.clear();feedEntries=[];feedPartial=false;$('feed-list').replaceChildren();$('feed-groups').replaceChildren();$('feed-filters').reset();groupTools.reset();resolutions.reset();chats.reset();clearWorkspace();state.search='';state.publicGroups=[];$('group-search').value='';$('auth-form').reset();authMode(false);show($('app-view'),false);show($('auth-view'));document.querySelectorAll('dialog[open]').forEach(d=>d.close());}
 async function enter() {
   const user=auth.session.user;
   state.profile=await api('writer','/api/me',{method:'POST',body:{displayName:user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Integrante'}});
@@ -90,7 +94,9 @@ async function loadFeed() {
   $('feed-status').textContent='Carregando apostas…';
   try {
     const groups=await api('writer','/api/groups');
-    const results=await Promise.allSettled(groups.map(async group=>({group,cards:await api('writer',`/api/groups/${group.id}/bets`)})));
+    const cached=groups.flatMap(group=>(cachedBets(group.id)||[]).map(card=>({group,bet:card.bet})));
+    if(cached.length){feedEntries=cached.sort((a,b)=>new Date(b.bet.publishedAt)-new Date(a.bet.publishedAt));renderFeed();$('feed-status').textContent='Dados em cache — atualizando…';}
+    const results=await Promise.allSettled(groups.map(async group=>{const cards=await api('writer',`/api/groups/${group.id}/bets`);if(serial===state.serial)rememberBets(group.id,cards);return {group,cards};}));
     if(state.mode!=='feed'||serial!==state.serial)return;
     state.groups=groups;renderGroups();
     const entries=results.filter(result=>result.status==='fulfilled').flatMap(result=>result.value.cards.map(card=>({group:result.value.group,bet:card.bet})));
@@ -131,6 +137,7 @@ async function selectGroup(group) {
   sessionStorage.setItem('gamblr.group',group.id);renderGroups();$('explore-button').classList.remove('active');$('page-kicker').textContent='SEU GRUPO · PONTOS VIRTUAIS';$('page-title').textContent=group.name;groupSubtitle(group.memberCount);
   $('private-nav').classList.remove('active');show($('private-view'),false);show($('betting-column'));show($('empty-betting'),false);
   show($('explore-view'),false);show($('group-view'));show($('new-group-button'),false);show($('new-bet-button'));
+  const cached=cachedBets(group.id);if(cached){state.bets=cached;renderBets();renderDetail();}
   await refreshGroup(true);
 }
 async function refreshGroup(force=false) {
@@ -139,10 +146,10 @@ async function refreshGroup(force=false) {
   try{
     const [wallet,bets,ranking,settings]=await Promise.allSettled([api('writer',`/api/groups/${id}/wallet/me`),api('writer',`/api/groups/${id}/bets`),api('reader',`/api/groups/${id}/ranking`),api('writer',`/api/groups/${id}/settings`)]);
     if(serial!==state.serial || state.group?.id!==id)return;
-    if([wallet,bets].some(result=>result.status==='rejected'&&[403,404].includes(result.reason.status))){toast('Este grupo não está mais disponível para você.',true);await loadGroups();return;}
+    if([wallet,bets].some(result=>result.status==='rejected'&&[403,404].includes(result.reason.status))){betCache.delete(id);state.bets=[];toast('Este grupo não está mais disponível para você.',true);await loadGroups();return;}
     if(settings.status==='fulfilled'){state.group.ownerId=settings.value.ownerId;state.group.name=settings.value.name;$('page-title').textContent=settings.value.name;renderGroups();}
     if(wallet.status==='fulfilled'){$('available-points').textContent=points(wallet.value.availablePoints);$('reserved-points').textContent=points(wallet.value.reservedPoints);state.wallet=wallet.value;}
-    if(bets.status==='fulfilled'){state.bets=bets.value;if(!state.bets.some(card=>card.bet.id===state.selected))state.selected=state.bets[0]?.bet.id || null;renderBets();renderDetail();}
+    if(bets.status==='fulfilled'){rememberBets(id,bets.value);state.bets=bets.value;if(!state.bets.some(card=>card.bet.id===state.selected))state.selected=state.bets[0]?.bet.id || null;renderBets();renderDetail();}
     else if(!state.bets.length)$('bets-list').replaceChildren(el('p','form-error',bets.reason.message));
     if(ranking.status==='fulfilled'){state.ranking=ranking.value.ranking;renderRanking();show($('ranking-error'),false);}else{$('ranking-error').textContent='Ranking indisponível. Confira se o serviço de consultas está em execução.';show($('ranking-error'));}
     refreshOdds();resolutions.refresh();
