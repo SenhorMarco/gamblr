@@ -86,9 +86,12 @@ class ReaderApiTests(unittest.TestCase):
         def change(_):
             row = list(self.db.odds[0]); row[4] = 3
             self.db.odds[0] = tuple(row)
+        self.connect.reset_mock()
         with patch("gamblr_reader.time.sleep", side_effect=change):
             response = self.client.get(route, headers={"Authorization":"Bearer "+self.token(), "X-Odds-Version":version})
         self.assertEqual(200, response.status_code)
+        self.connect.assert_called_once()
+        self.assertGreaterEqual(sum("SET TRANSACTION" in sql for sql,_ in self.db.queries),3)
         self.assertNotEqual(version, response.json["version"])
         self.assertEqual(3, response.json["options"][0]["votes"])
         self.assertTrue(self.db.closed)
