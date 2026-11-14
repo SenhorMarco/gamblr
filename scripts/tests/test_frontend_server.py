@@ -54,7 +54,7 @@ class FrontendServerTests(unittest.TestCase):
         bet='00000000-0000-0000-0000-000000000001'
         with patch('urllib.request.OpenerDirector.open',return_value=upstream) as opened:
             self.assertEqual(200,self.client.get(f'/writer/api/bets/{bet}/resolution').status_code)
-            for action in ('result','contests','decision','cancel'):
+            for action in ('result','contests','decision','cancel','delete'):
                 payload={'action':'KEEP'} if action=='decision' else {'optionId':bet} if action=='result' else {}
                 response=self.client.post(f'/writer/api/bets/{bet}/{action}',json=payload,headers={'Authorization':'Bearer user-token'})
                 self.assertEqual(200,response.status_code)
@@ -65,3 +65,22 @@ class FrontendServerTests(unittest.TestCase):
                 self.assertEqual(payload,json.loads(req.data))
         self.assertEqual(404,self.client.post(f'/reader/api/bets/{bet}/result',json={}).status_code)
         self.assertEqual(404,self.client.get(f'/writer/api/bets/{bet}/resolution?target=http://example.test').status_code)
+
+    def test_group_administration_routes_are_fixed_and_keep_bearer(self):
+        upstream=Mock();upstream.__enter__=Mock(return_value=upstream);upstream.__exit__=Mock(return_value=False)
+        upstream.status=200;upstream.read.return_value=b'{}'
+        group='00000000-0000-0000-0000-000000000001'
+        routes=[f'groups/{group}/settings',f'groups/{group}/members',f'groups/{group}/join-requests','group-invitations']
+        posts=[f'groups/{group}/{action}' for action in ('settings','leave','transfer','invitations','join-requests')]
+        posts += [f'groups/{group}/members/{group}/{action}' for action in ('role','remove')]
+        posts += [f'groups/{group}/join-requests/{group}/{action}' for action in ('approve','decline')]
+        posts += [f'group-invitations/{group}/{action}' for action in ('accept','decline')]
+        with patch('urllib.request.OpenerDirector.open',return_value=upstream) as opened:
+            for route in routes:
+                self.assertEqual(200,self.client.get('/writer/api/'+route,headers={'Authorization':'Bearer member'}).status_code)
+                self.assertEqual('Bearer member',opened.call_args.args[0].get_header('Authorization'))
+            for route in posts:
+                self.assertEqual(200,self.client.post('/writer/api/'+route,json={},headers={'Authorization':'Bearer member'}).status_code)
+                self.assertEqual('http://127.0.0.1:8080/api/'+route,opened.call_args.args[0].full_url)
+        self.assertEqual(404,self.client.post(f'/reader/api/groups/{group}/leave').status_code)
+        self.assertEqual(404,self.client.get(f'/writer/api/groups/{group}/settings?target=http://example.test').status_code)

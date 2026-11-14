@@ -9,6 +9,8 @@ import java.util.UUID;
 final class Requests {
     record Message(@NotBlank @Size(max=4000) String body, @NotNull UUID clientId) {}
     record Friend(@NotNull UUID userId) {}
+    enum Role { MEMBER, MODERATOR }
+    record MemberRole(@NotNull Role role) {}
     enum DecisionAction { KEEP, CHANGE, CANCEL }
     record Result(@NotNull UUID optionId) {}
     record Decision(@NotNull DecisionAction action, UUID optionId) {}

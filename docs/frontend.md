@@ -6,8 +6,8 @@ nem build obrigatório para usar este protótipo.
 
 ## Iniciar
 
-As migrações até V008 devem estar aplicadas. Para resultado e pagamento, execute
-[V008](../database/migrations/V008__bet_resolution.sql) no SQL Editor após V007.
+As migrações até V009 devem estar aplicadas. Para administração e crédito diário,
+execute [V009](../database/migrations/V009__group_administration.sql) após V008.
 Use o `.env` já configurado e contas confirmadas no Supabase Auth.
 
 Para iniciar os três serviços em um único terminal, na raiz:
@@ -63,8 +63,8 @@ contestação, decisão do dono, cancelamento e pagamento automático.
 
 1. Entre com a conta do autor.
 2. Clique em **Criar grupo** e informe nome e pontos iniciais. A interface cria
-   grupos públicos com entrada imediata. Pontos e prazos adicionais ficam no
-   formulário expansível; o crédito diário automático ainda não está ativo.
+   grupos públicos ou privados, com entrada imediata, solicitação ou convite.
+   Pontos diários e prazos ficam no formulário expansível.
 3. Clique em **Nova aposta** e informe pergunta, tipo, término e mínimo. Múltipla
    escolha aceita uma opção por linha. O critério de verificação é opcional.
 4. Clique em **Outra sessão**. A nova aba começa sem a sessão da anterior.
@@ -125,10 +125,11 @@ apostas exige participação atual. Grupos privados não aparecem na exploraçã
 
 ## Limites
 
-Ainda não há convites, gestão de moderadores, saída/remoção de integrantes ou
-crédito diário automático. Resultado, contestação, cancelamento e pagamento
-estão implementados conforme [resultados.md](resultados.md). Pontos são
-exclusivamente virtuais.
+A administração de grupos, convites, saída/remoção e crédito diário estão em
+[administracao.md](administracao.md). Resultado, contestação, cancelamento e
+pagamento estão em [resultados.md](resultados.md). A interface continua sendo um
+protótipo temporário. Pontos são exclusivamente virtuais; prêmios internos
+permanecem em aberto.
 
 ## Testes
 

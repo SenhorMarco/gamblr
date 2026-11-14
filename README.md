@@ -4,7 +4,7 @@ Protótipo de apostas de grupo com pontos virtuais, PostgreSQL no Supabase,
 Spring Boot para escritas e Flask para ranking e odds.
 
 Para iniciar Spring, Flask e o site juntos, com o `.env` configurado e as
-migrações até V008 aplicadas, execute na raiz do projeto:
+migrações até V009 aplicadas, execute na raiz do projeto:
 
 ```powershell
 .\iniciar.cmd
@@ -30,13 +30,15 @@ Detalhes e alternativas em [execução local](docs/execucao-local.md).
 - [Frontend temporário para testes](docs/frontend.md)
 - [Chats de grupo, amizades e mensagens privadas](docs/chats.md)
 - [Resultado, contestação e pagamento das apostas](docs/resultados.md)
+- [Administração, convites e crédito diário](docs/administracao.md)
 
 O repositório contém o banco, seus verificadores e o serviço Spring Boot para
 grupos, publicação e reserva de palpites, além do Flask para ranking e odds.
 A interface temporária permite testar login, grupos, apostas, reservas, ranking
 e odds, além de chats de grupo, pedidos de amizade e mensagens privadas pelo
 navegador, incluindo resultado, contestação, cancelamento e pagamento. Chats
-exigem V007 e o ciclo de resultado exige V008. A autenticação usa Supabase Auth; os serviços validam os
+exigem V007, o ciclo de resultado exige V008 e a administração/crédito diário
+exigem V009. A autenticação usa Supabase Auth; os serviços validam os
 JWTs do projeto. A arquitetura definitiva do frontend permanece em aberto.
 
 Credenciais ficam no `.env` local; use `.env.example` como referência sem

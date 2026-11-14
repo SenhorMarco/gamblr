@@ -1,11 +1,16 @@
 import {AuthClient, ClientError} from './auth.js';
 import {createChats} from './chat.js';
 import {createResolutions} from './resolution.js';
+import {createGroupTools} from './groups.js';
 const $ = id => document.getElementById(id);
 const state = {profile:null, groups:[], group:null, bets:[], selected:null, ranking:[], mode:'explore', serial:0, refreshing:false, detailKey:'', listKey:'', signup:false};
 state.search='';state.publicGroups=[];
 let auth, toastTimer;
-const chats=createChats({api,profile:()=>state.profile,onPrivate:friend=>privateConversation(friend)});
+const groupTools=createGroupTools({api,profile:()=>state.profile,currentGroup:()=>state.mode==='group'?state.group:null,onChange:preferred=>loadGroups(preferred)});
+const chats=createChats({api,profile:()=>state.profile,onPrivate:friend=>privateConversation(friend),onBet:id=>{
+  if(!state.bets.some(card=>card.bet.id===id)){toast('Esta aposta não está mais disponível.',true);return;}
+  $('bet-filter').value='all';state.selected=id;state.detailKey='';state.listKey='';renderBets();renderDetail();refreshOdds();$('bet-detail').scrollIntoView({behavior:'smooth',block:'nearest'});
+}});
 const resolutions=createResolutions({api,onChanged:async(data,fromAction)=>{
   if(state.mode!=='group')return;
   const card=state.bets.find(item=>item.bet.id===state.selected);if(!card)return;
@@ -34,13 +39,13 @@ async function api(service,path,{method='GET',body}={},retried=false) {
   return data;
 }
 function clearWorkspace() {state.serial++;state.group=null;state.groups=[];state.bets=[];state.selected=null;state.profile=null;state.detailKey='';state.listKey='';state.refreshing=false;$('group-list').replaceChildren();$('bets-list').replaceChildren();$('bet-detail').replaceChildren();$('ranking-list').replaceChildren();}
-function signedOut() {resolutions.reset();chats.reset();clearWorkspace();state.search='';state.publicGroups=[];$('group-search').value='';$('auth-form').reset();authMode(false);show($('app-view'),false);show($('auth-view'));document.querySelectorAll('dialog[open]').forEach(d=>d.close());}
+function signedOut() {groupTools.reset();resolutions.reset();chats.reset();clearWorkspace();state.search='';state.publicGroups=[];$('group-search').value='';$('auth-form').reset();authMode(false);show($('app-view'),false);show($('auth-view'));document.querySelectorAll('dialog[open]').forEach(d=>d.close());}
 async function enter() {
   const user=auth.session.user;
   state.profile=await api('writer','/api/me',{method:'POST',body:{displayName:user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Integrante'}});
   $('user-name').textContent=state.profile.displayName;$('user-email').textContent=user?.email || '';$('user-initial').textContent=state.profile.displayName.slice(0,1).toUpperCase();
   $('auth-form').reset();show($('auth-view'),false);show($('app-view'));
-  chats.start();await loadGroups(); checkStatus();
+  groupTools.start();chats.start();await loadGroups(); checkStatus();
 }
 async function loadGroups(preferred) {
   const groups=await api('writer','/api/groups'); if(!state.profile)return;state.groups=groups;renderGroups();
@@ -67,8 +72,8 @@ async function loadPublic() {
 function renderPublic() {
   const groups=state.publicGroups.filter(matchesSearch);
   const fragment=document.createDocumentFragment();
-  for(const group of groups){const card=el('article','public-card');card.append(el('div','group-icon',group.name.slice(0,1).toUpperCase()),el('h3','',group.name),el('p','',`${group.memberCount} integrante${group.memberCount===1?'':'s'} · entrada livre`));
-    const button=el('button','button '+(group.member?'secondary':'primary'),group.member?'Abrir grupo ↗':'Entrar no grupo ↗');button.type='button';button.onclick=async()=>{button.disabled=true;try{if(!group.member)await api('writer',`/api/groups/${group.id}/members/me`,{method:'POST'});await loadGroups(group.id);if(!group.member)toast('Você entrou no grupo. Faça seu primeiro palpite!');}catch(error){toast(error.message,true);}finally{button.disabled=false;}};card.append(button);fragment.append(card);}
+  for(const group of groups){const mode=group.entryMode||'IMMEDIATE',description=mode==='REQUEST'?'entrada por solicitação':mode==='INVITE'?'entrada por convite':'entrada livre';const card=el('article','public-card');card.append(el('div','group-icon',group.name.slice(0,1).toUpperCase()),el('h3','',group.name),el('p','',`${group.memberCount} integrante${group.memberCount===1?'':'s'} · ${description}`));
+    const label=group.member?'Abrir grupo ↗':group.requestPending?'Solicitação enviada':mode==='REQUEST'?'Solicitar entrada':mode==='INVITE'?'Somente por convite':'Entrar no grupo ↗';const button=el('button','button '+(group.member?'secondary':'primary'),label);button.type='button';button.disabled=!group.member&&(!!group.requestPending||mode==='INVITE');button.onclick=async()=>{button.disabled=true;try{if(!group.member&&mode==='REQUEST'){await api('writer',`/api/groups/${group.id}/join-requests`,{method:'POST'});await loadPublic();toast('Solicitação enviada ao dono e aos moderadores.');return;}if(!group.member)await api('writer',`/api/groups/${group.id}/members/me`,{method:'POST'});await loadGroups(group.id);if(!group.member)toast('Você entrou no grupo. Faça seu primeiro palpite!');}catch(error){toast(error.message,true);}finally{button.disabled=false;}};card.append(button);fragment.append(card);}
   if(!groups.length){const empty=el('div','empty-state');empty.append(el('strong','','O primeiro grupo pode ser o seu.'),el('span','','Crie um grupo e convide outra pessoa para testar com você.'));fragment.append(empty);}
   if(!groups.length&&state.search){fragment.replaceChildren();const empty=el('div','empty-state');empty.append(el('strong','','Nenhum grupo encontrado.'),el('span','','Tente pesquisar outro nome.'));fragment.append(empty);}
   $('public-groups').replaceChildren(fragment);
@@ -87,9 +92,10 @@ async function refreshGroup(force=false) {
   if(!state.group || (state.refreshing&&!force))return;state.refreshing=true;
   const id=state.group.id, serial=++state.serial;
   try{
-    const [wallet,bets,ranking]=await Promise.allSettled([api('writer',`/api/groups/${id}/wallet/me`),api('writer',`/api/groups/${id}/bets`),api('reader',`/api/groups/${id}/ranking`)]);
+    const [wallet,bets,ranking,settings]=await Promise.allSettled([api('writer',`/api/groups/${id}/wallet/me`),api('writer',`/api/groups/${id}/bets`),api('reader',`/api/groups/${id}/ranking`),api('writer',`/api/groups/${id}/settings`)]);
     if(serial!==state.serial || state.group?.id!==id)return;
-    if([wallet,bets].some(result=>result.status==='rejected'&&result.reason.status===403)){toast('Você não participa mais desse grupo.',true);await loadGroups();return;}
+    if([wallet,bets].some(result=>result.status==='rejected'&&[403,404].includes(result.reason.status))){toast('Este grupo não está mais disponível para você.',true);await loadGroups();return;}
+    if(settings.status==='fulfilled'){state.group.ownerId=settings.value.ownerId;state.group.name=settings.value.name;$('page-title').textContent=settings.value.name;renderGroups();}
     if(wallet.status==='fulfilled'){$('available-points').textContent=points(wallet.value.availablePoints);$('reserved-points').textContent=points(wallet.value.reservedPoints);state.wallet=wallet.value;}
     if(bets.status==='fulfilled'){state.bets=bets.value;if(!state.bets.some(card=>card.bet.id===state.selected))state.selected=state.bets[0]?.bet.id || null;renderBets();renderDetail();}
     else if(!state.bets.length)$('bets-list').replaceChildren(el('p','form-error',bets.reason.message));
@@ -119,7 +125,7 @@ function renderBets() {
 }
 function renderDetail() {
   const card=state.bets.find(card=>card.bet.id===state.selected);show($('bet-detail'),!!card);if(!card){resolutions.reset();return;}
-  const bet=card.bet, key=JSON.stringify([bet.id,bet.state,open(bet),card.myPrediction]);if(key===state.detailKey)return;state.detailKey=key;
+  const bet=card.bet, key=JSON.stringify([bet.id,bet.state,open(bet),card.myPrediction,state.group?.ownerId]);if(key===state.detailKey)return;state.detailKey=key;
   const detail=$('bet-detail');detail.replaceChildren();detail.append(el('span','eyebrow','ESCOLHA SEU LADO'),el('h3','',bet.question),el('p','detail-meta',`Mínimo de ${points(bet.minimumPoints)} pontos · Término ${date(bet.endsAt)}`));
   if(bet.verificationCriterion)detail.append(el('p','criterion',`Verificação: ${bet.verificationCriterion}`));
   const form=el('form');form.id='prediction-form';const options=el('div','option-grid');
@@ -134,6 +140,7 @@ function renderDetail() {
   form.onsubmit=event=>{event.preventDefault();submit(form,async()=>{const values=new FormData(form);if(!values.get('option'))throw new ClientError('Escolha uma opção.');const result=await api('writer',`/api/bets/${bet.id}/predictions`,{method:'POST',body:{optionId:values.get('option'),points:values.get('points')}});card.myPrediction=result;state.detailKey='';renderDetail();toast('Palpite confirmado. Seus pontos foram reservados.');await refreshGroup(true);});};
   if(!active(bet)&&card.myPrediction){const confirmed=form.querySelector('.confirmed-box');if(confirmed)confirmed.textContent=`Seu palpite: ${bet.options.find(option=>option.id===card.myPrediction.optionId)?.label||'confirmado'} · ${points(card.myPrediction.points)} pontos. A reserva foi concluída.`;}
   detail.append(form);resolutions.attach(bet,detail);
+  if(state.group?.ownerId===state.profile.id){const remove=el('button','button secondary delete-bet','Apagar aposta');remove.id='delete-bet-button';remove.type='button';const note=el('p','prediction-note',active(bet)?'Apagar cancela esta aposta e devolve todas as reservas.':'Apagar oculta esta aposta e preserva os pagamentos já concluídos.');detail.append(note,remove);remove.onclick=async()=>{remove.disabled=true;try{await api('writer',`/api/bets/${bet.id}/delete`,{method:'POST'});state.selected=null;state.detailKey='';await refreshGroup(true);chats.refresh();toast('Aposta apagada.');}catch(error){toast(error.message,true);remove.disabled=false;}};}
 }
 async function refreshOdds() {
   const id=state.selected;if(!id || state.mode!=='group')return;
@@ -157,11 +164,13 @@ $('group-search').oninput=()=>{state.search=$('group-search').value.trim();rende
 $('search-form').onsubmit=event=>{event.preventDefault();explore().catch(error=>toast(error.message,true));};
 $('refresh-button').onclick=()=>{checkStatus();chats.refresh();if(state.mode==='group')refreshGroup(true).catch(error=>toast(error.message,true));else if(state.mode==='explore')loadPublic().catch(error=>toast(error.message,true));};
 $('bet-filter').onchange=()=>{const filter=$('bet-filter').value,cards=state.bets.filter(card=>filter==='open'?active(card.bet):filter==='mine'?!!card.myPrediction:true);if(!cards.some(card=>card.bet.id===state.selected))state.selected=cards[0]?.bet.id||null;state.listKey='';state.detailKey='';renderBets();renderDetail();refreshOdds();};
-for(const id of ['new-group-button','new-group-side'])$(id).onclick=()=>{$('group-form').reset();show($('group-form').querySelector('.form-error'),false);$('group-dialog').showModal();};
+function syncGroupEntry(){const privateGroup=$('group-visibility').value==='PRIVATE';if(privateGroup)$('group-entry').value='INVITE';$('group-entry').disabled=privateGroup;}
+$('group-visibility').onchange=syncGroupEntry;
+for(const id of ['new-group-button','new-group-side'])$(id).onclick=()=>{$('group-form').reset();syncGroupEntry();show($('group-form').querySelector('.form-error'),false);$('group-dialog').showModal();};
 document.querySelectorAll('.close-dialog').forEach(button=>button.onclick=()=>button.closest('dialog').close());
 $('new-bet-button').onclick=()=>{$('bet-form').reset();show($('options-label'),false);$('options-label').querySelector('textarea').required=false;show($('bet-form').querySelector('.form-error'),false);const end=new Date(Date.now()+3600000);end.setMinutes(end.getMinutes()-end.getTimezoneOffset());$('bet-ends').value=end.toISOString().slice(0,16);$('bet-dialog').showModal();};
 $('bet-type').onchange=()=>{const multiple=$('bet-type').value==='MULTIPLE_CHOICE';show($('options-label'),multiple);$('options-label').querySelector('textarea').required=multiple;};
-$('group-form').onsubmit=event=>{event.preventDefault();submit(event.currentTarget,async()=>{const data=new FormData(event.currentTarget);const group=await api('writer','/api/groups',{method:'POST',body:{name:data.get('name'),initialPoints:data.get('initialPoints'),dailyPoints:data.get('dailyPoints'),settlementSeconds:Number(data.get('settlementMinutes'))*60,contestSeconds:Number(data.get('contestMinutes'))*60,visibility:'PUBLIC',entryMode:'IMMEDIATE',invitePolicy:'ALL_MEMBERS'}});$('group-dialog').close();await loadGroups(group.id);toast('Grupo criado. Outra pessoa já pode entrar pela aba Explorar.');});};
+$('group-form').onsubmit=event=>{event.preventDefault();submit(event.currentTarget,async()=>{const data=new FormData(event.currentTarget);const group=await api('writer','/api/groups',{method:'POST',body:{name:data.get('name'),initialPoints:data.get('initialPoints'),dailyPoints:data.get('dailyPoints'),settlementSeconds:Number(data.get('settlementMinutes'))*60,contestSeconds:Number(data.get('contestMinutes'))*60,visibility:data.get('visibility'),entryMode:$('group-entry').value,invitePolicy:data.get('invitePolicy')}});$('group-dialog').close();await loadGroups(group.id);toast('Grupo criado. Use Gerenciar grupo para convidar pessoas e ajustar as regras.');});};
 $('bet-form').onsubmit=event=>{event.preventDefault();submit(event.currentTarget,async()=>{const data=new FormData(event.currentTarget);const ends=new Date(data.get('endsAt'));if(!Number.isFinite(ends.getTime())||ends.getTime()<=Date.now())throw new ClientError('Escolha um término no futuro.');const options=data.get('type')==='MULTIPLE_CHOICE'?String(data.get('options')).split('\n').map(s=>s.trim()).filter(Boolean):null;const bet=await api('writer',`/api/groups/${state.group.id}/bets`,{method:'POST',body:{question:data.get('question'),type:data.get('type'),options,endsAt:ends.toISOString(),minimumPoints:data.get('minimumPoints'),verificationCriterion:data.get('verificationCriterion')||null}});state.selected=bet.id;$('bet-dialog').close();await refreshGroup(true);toast('Aposta publicada. Os dados já estão bloqueados para edição.');});};
 async function start() {
   try{const params=new URLSearchParams(location.search);if(params.has('nova')){sessionStorage.removeItem('gamblr.session');sessionStorage.removeItem('gamblr.group');history.replaceState(null,'','/');}const config=await fetch('/config').then(r=>{if(!r.ok)throw new Error();return r.json();});auth=new AuthClient(config);$('auth-submit').disabled=false;auth.onChange=session=>{if(!session)signedOut();};if(auth.session)await enter();}

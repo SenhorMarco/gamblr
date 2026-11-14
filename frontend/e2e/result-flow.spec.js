@@ -19,7 +19,9 @@ test('author publishes, participant contests, owner decides and payout is displa
       if(path.endsWith('/resolution')||path.endsWith('/result')||path.endsWith('/contests')||path.endsWith('/decision')) {
         if(expired&&!pending&&state==='RESULT_PUBLISHED')state='SETTLED';
         json={state,phase:state==='OPEN'?'AWAITING_RESULT':state==='SETTLED'?'SETTLED':'CONTEST_PERIOD',resultDeadline:new Date(Date.now()+3600000).toISOString(),contestDeadline:published?new Date(Date.now()+60000).toISOString():null,publishedOptionId:published,finalOptionId:final,concludedAt:state==='SETTLED'?new Date().toISOString():null,conclusionReason:state==='SETTLED'?'PAID':null,pendingContests:pending?1:0,myPendingContest:role!=='owner'&&pending,canPublishResult:role==='owner'&&state==='OPEN',canContest:role!=='owner'&&state==='RESULT_PUBLISHED'&&!pending&&!expired,canDecide:role==='owner'&&state==='RESULT_PUBLISHED'&&pending,canCancel:false,myCredit:role!=='owner'&&state==='SETTLED'?50:null,myMovement:role!=='owner'&&state==='SETTLED'?'PAYOUT':null,lastDecisionAction:decision};
-      }else if(path.endsWith('/api/me'))json={id:role==='owner'?uid(1):uid(2),displayName:role==='owner'?'Marco':'Ana'};
+      }else if(path.endsWith('/settings'))json={...group,initialPoints:100,dailyPoints:0,settlementSeconds:3600,contestSeconds:60,visibility:'PUBLIC',entryMode:'IMMEDIATE',invitePolicy:'ALL_MEMBERS',myRole:role==='owner'?'OWNER':'MEMBER',canInvite:true};
+      else if(path.endsWith('/api/group-invitations'))json=[];
+      else if(path.endsWith('/api/me'))json={id:role==='owner'?uid(1):uid(2),displayName:role==='owner'?'Marco':'Ana'};
       else if(path.endsWith('/api/friendships'))json=[];
       else if(path.endsWith('/api/groups')||path.endsWith('/api/groups/public'))json=[group];
       else if(path.endsWith('/bets'))json=[{bet:{...bet,state},myPrediction:role==='owner'?null:prediction}];

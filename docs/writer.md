@@ -179,6 +179,7 @@ Spring e o PostgreSQL temporário.
 
 Chats de grupo e privados estão implementados em [chats.md](chats.md). O ciclo
 de resultado, contestação, decisão do dono, cancelamento e pagamento está em
-[resultados.md](resultados.md), com ativação pela V008. Ainda faltam convites,
-aprovação de entrada, crédito diário, administração de integrantes e interface
-definitiva. Prêmios internos continuam em aberto.
+[resultados.md](resultados.md), com ativação pela V008. Convites, aprovação de
+entrada, crédito diário e administração de integrantes estão em
+[administracao.md](administracao.md), com ativação pela V009. A interface segue
+como protótipo temporário. Prêmios internos continuam em aberto.

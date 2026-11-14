@@ -18,6 +18,10 @@ do fluxo de aposta de grupo. Não constitui uma implementação completa dos req
 | `point_movements` | Histórico de créditos, reservas, pagamentos, perdas e devoluções | RF-01, RF-02, RF-07, RF-09, RF-12, RF-21 |
 | `contests` | Contestação pendente, resolvida ou retirada | RF-11 |
 | `contest_decisions` | Decisões do dono e opção final correspondente | RF-22 |
+| `friendships`, `group_messages`, `private_messages` (V007) | Amizades e mensagens; `bet_id` vincula publicações ao chat na V009 | RF-16, RF-18, RF-23, RF-31 |
+| `membership_departures` (V008) | Saídas preservadas para apuração | RF-10, RF-11, RF-19 |
+| `group_invitations`, `group_join_requests` (V009) | Convites e solicitações de entrada | RF-17, RF-18 |
+| `membership_periods`, `group_daily_rates`, `group_daily_runs` (V009) | Participações, valores históricos e processamento diário | RF-02 |
 | `current_group_members` | Participação atual e vínculo emissor/subject para autorização do Flask (V006) | RF-13, RF-15 |
 | `group_ranking` | Ranking de membros atuais por saldo disponível e antiguidade da conta | RF-20 |
 | `bet_odds` | Votos e odds agregados por opção, sem valor/autor dos palpites | RF-05, RF-13, RF-14 |
@@ -64,7 +68,8 @@ As consultas devem usar o prefixo `gamblr.`, por exemplo `gamblr.bets`.
 
 O [serviço Spring Boot](writer.md) já implementa publicação, entrada pública
 imediata, provisionamento de perfil, reserva transacional, resultado, contestação
-e conclusão financeira. Crédito diário e administração ainda não foram implementados.
+e conclusão financeira. A V009 acrescenta administração e crédito diário,
+descritos em [administracao.md](administracao.md).
 
 As FKs preservam vínculos históricos; elas não garantem que o integrante esteja
 ativo no momento de uma operação. Cada endpoint precisará validar a identidade,
@@ -79,8 +84,9 @@ Java exercitam esse protocolo, concorrência e rollback em schema temporário.
 O serviço publica aposta/opções atomicamente, oferece Sim/Não para binárias e
 copia os prazos do grupo. Não expõe endpoints de edição da proposta, opções ou
 palpites. O ciclo de resultado, retirada de contestações por saída e conclusão
-automática está implementado em [resultados.md](resultados.md). Ainda faltam
-crédito diário, transferência/sucessão e as APIs de saída/remoção.
+automática está implementado em [resultados.md](resultados.md). Falta definir
+a interface definitiva. Crédito diário, transferência/sucessão e
+as APIs de saída/remoção estão implementados pela V009.
 
 O histórico não atualiza automaticamente a carteira, nem a carteira gera histórico.
 Essas escritas devem ser feitas juntas na mesma transação. Isso já ocorre na
@@ -103,8 +109,12 @@ que só contestações pendentes na decisão sejam resolvidas por ela.
 
 A V007 acrescenta amizades e mensagens de grupo/privadas, com autorização no
 Spring e RLS restrita à conta técnica do writer. Consulte [chats.md](chats.md).
-Convites e pedidos de entrada permanecem para uma etapa posterior.
+Convites e pedidos de entrada são acrescentados pela V009.
 
 A V008 acrescenta o motivo da conclusão e os eventos de saída usados pelo
 processamento automático. As tabelas de resultados e contestações da V003 são
 reutilizadas. Prêmios internos permanecem em aberto.
+
+A V009 guarda períodos de participação e valores diários históricos, registra
+as datas processadas e oculta grupos/apostas excluídos sem apagar carteiras ou
+movimentos. Os eventos de publicação de apostas aparecem no chat.
