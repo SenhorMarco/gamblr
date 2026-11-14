@@ -53,9 +53,42 @@ async function loadGroups(preferred) {
   if(next)await selectGroup(next);else if(groups.length)await selectGroup(groups[0]);else await explore();
 }
 function renderGroups() {
+  show($('feed-view'),state.mode==='feed');$('feed-button').classList.toggle('active',state.mode==='feed');
   const fragment=document.createDocumentFragment();
   for(const group of state.groups.filter(matchesSearch)){const button=el('button','group-nav'+(state.group?.id===group.id?' active':''));button.type='button';button.append(el('span','group-icon',group.name.slice(0,1).toUpperCase()),el('span','',group.name));button.onclick=()=>selectGroup(group).catch(error=>toast(error.message,true));fragment.append(button);}
   $('group-list').replaceChildren(fragment);show($('no-groups'),!state.groups.length);
+}
+async function openFeed() {
+  resolutions.reset();chats.pause();state.mode='feed';state.group=null;state.selected=null;
+  state.serial++;state.refreshing=false;renderGroups();
+  $('explore-button').classList.remove('active');$('private-nav').classList.remove('active');
+  $('page-kicker').textContent='SEUS GRUPOS';$('page-title').textContent='Feed';
+  $('page-subtitle').textContent='As últimas apostas das suas turmas.';
+  for(const id of ['explore-view','group-view','private-view','betting-column','empty-betting','new-bet-button'])show($(id),false);
+  show($('new-group-button'));await loadFeed();
+}
+let feedLoading=false;
+async function loadFeed() {
+  if(feedLoading)return;feedLoading=true;const serial=state.serial;
+  $('feed-status').textContent='Carregando apostas…';
+  try {
+    const groups=await api('writer','/api/groups');
+    const results=await Promise.allSettled(groups.map(async group=>({group,cards:await api('writer',`/api/groups/${group.id}/bets`)})));
+    if(state.mode!=='feed'||serial!==state.serial)return;
+    state.groups=groups;renderGroups();
+    const entries=results.filter(result=>result.status==='fulfilled').flatMap(result=>result.value.cards.map(card=>({group:result.value.group,bet:card.bet})));
+    entries.sort((a,b)=>new Date(b.bet.publishedAt)-new Date(a.bet.publishedAt)||a.bet.id.localeCompare(b.bet.id));
+    const fragment=document.createDocumentFragment();
+    for(const {group,bet} of entries){
+      const card=el('article','public-card');card.append(el('p','muted',group.name),el('h3','',bet.question),el('p','',`${date(bet.publishedAt)} · ${betStatus(bet)}`));
+      const button=el('button','button secondary','Ver aposta ↗');button.type='button';
+      button.onclick=async()=>{button.disabled=true;try{await selectGroup(group);if(state.mode!=='group'||state.group?.id!==group.id)return;if(!state.bets.some(item=>item.bet.id===bet.id))throw new ClientError('Esta aposta não está mais disponível.');state.selected=bet.id;state.detailKey='';state.listKey='';$('bet-filter').value='all';renderBets();renderDetail();refreshOdds();$('bet-detail').scrollIntoView({behavior:'smooth',block:'nearest'});}catch(error){toast(error.message,true);}finally{button.disabled=false;}};
+      card.append(button);fragment.append(card);
+    }
+    $('feed-list').replaceChildren(fragment);
+    $('feed-status').textContent=results.some(result=>result.status==='rejected')?'Não foi possível carregar todos os grupos. Use atualizar para tentar novamente.':entries.length?'':groups.length?'Seus grupos ainda não têm apostas.':'Entre em um grupo para acompanhar as apostas no Feed.';
+  }catch(error){if(state.mode==='feed'&&serial===state.serial){$('feed-list').replaceChildren();$('feed-status').textContent=error.message;}}
+  finally{feedLoading=false;}
 }
 async function explore() {
   resolutions.reset();
@@ -165,12 +198,13 @@ function authMode(signup) {state.signup=signup;show($('name-label'),signup);$('a
 $('login-tab').onclick=()=>authMode(false);$('signup-tab').onclick=()=>authMode(true);
 $('auth-form').onsubmit=event=>{event.preventDefault();submit(event.currentTarget,async()=>{const email=$('auth-email').value.trim(),password=$('auth-password').value;if(state.signup){const data=await auth.signUp(email,password,$('auth-name').value.trim());if(!data.access_token){$('auth-password').value='';authMode(false);$('auth-info').textContent='Cadastro solicitado. Confira seu e-mail para confirmar a conta antes de entrar.';show($('auth-info'));return;}}else await auth.signIn(email,password);await enter();});};
 $('logout-button').onclick=async()=>{try{await auth.logout();}catch{toast('Você saiu desta sessão. O serviço de autenticação não confirmou o encerramento remoto.',true);}};
+$('feed-button').onclick=()=>openFeed().catch(error=>toast(error.message,true));
 $('explore-button').onclick=()=>explore().catch(error=>toast(error.message,true));
 $('home-button').onclick=$('explore-button').onclick;
 $('messages-button').onclick=()=>privateConversation();$('private-nav').onclick=()=>privateConversation();
 $('group-search').oninput=()=>{state.search=$('group-search').value.trim();renderGroups();if(state.mode==='explore')renderPublic();};
 $('search-form').onsubmit=event=>{event.preventDefault();explore().catch(error=>toast(error.message,true));};
-$('refresh-button').onclick=()=>{checkStatus();chats.refresh();if(state.mode==='group')refreshGroup(true).catch(error=>toast(error.message,true));else if(state.mode==='explore')loadPublic().catch(error=>toast(error.message,true));};
+$('refresh-button').onclick=()=>{checkStatus();chats.refresh();if(state.mode==='group')refreshGroup(true).catch(error=>toast(error.message,true));else if(state.mode==='explore')loadPublic().catch(error=>toast(error.message,true));else if(state.mode==='feed')loadFeed();};
 $('bet-filter').onchange=()=>{const filter=$('bet-filter').value,cards=state.bets.filter(card=>filter==='open'?active(card.bet):filter==='mine'?!!card.myPrediction:true);if(!cards.some(card=>card.bet.id===state.selected))state.selected=cards[0]?.bet.id||null;state.listKey='';state.detailKey='';renderBets();renderDetail();refreshOdds();};
 function syncGroupEntry(){const privateGroup=$('group-visibility').value==='PRIVATE';if(privateGroup)$('group-entry').value='INVITE';$('group-entry').disabled=privateGroup;}
 $('group-visibility').onchange=syncGroupEntry;
