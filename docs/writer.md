@@ -177,7 +177,8 @@ Spring e o PostgreSQL temporário.
 
 ## O que ainda falta
 
-Ainda não implementados: chat, convites,
-aprovação de entrada, crédito diário, cancelamento, resultado, contestações,
-pagamentos e interface definitiva. O fluxo desta entrega termina com os pontos
-reservados. Prêmios e demais decisões de produto abertas continuam em aberto.
+Chats de grupo e privados estão implementados em [chats.md](chats.md). O ciclo
+de resultado, contestação, decisão do dono, cancelamento e pagamento está em
+[resultados.md](resultados.md), com ativação pela V008. Ainda faltam convites,
+aprovação de entrada, crédito diário, administração de integrantes e interface
+definitiva. Prêmios internos continuam em aberto.

@@ -1,5 +1,14 @@
 # Banco de dados: permissões e migrações
 
+Para o ciclo de resultados, após V001–V007, execute somente a nova
+[V008__bet_resolution.sql](../database/migrations/V008__bet_resolution.sql)
+como `postgres` no SQL Editor. Veja [resultados.md](resultados.md).
+
+Para um ambiente que já tem V001–V006, a etapa de chats acrescenta somente
+[V007__friendships_messages.sql](../database/migrations/V007__friendships_messages.sql).
+Execute o arquivo completo como `postgres` no SQL Editor; ele já habilita RLS.
+Veja a ativação e o roteiro em [chats.md](chats.md).
+
 Os scripts desta etapa são aplicados manualmente no SQL Editor. O repositório
 contém roles, permissões, tabelas de domínio e views; confira a aplicação em cada
 ambiente com os verificadores descritos abaixo.

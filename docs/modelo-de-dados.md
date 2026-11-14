@@ -63,9 +63,8 @@ As consultas devem usar o prefixo `gamblr.`, por exemplo `gamblr.bets`.
 ## Regras que ainda dependem do backend
 
 O [serviço Spring Boot](writer.md) já implementa publicação, entrada pública
-imediata, provisionamento de perfil e reserva transacional. Os pontos abaixo
-descrevem o contrato para a evolução desse backend; apuração, pagamentos, crédito
-diário e administração ainda não foram implementados.
+imediata, provisionamento de perfil, reserva transacional, resultado, contestação
+e conclusão financeira. Crédito diário e administração ainda não foram implementados.
 
 As FKs preservam vínculos históricos; elas não garantem que o integrante esteja
 ativo no momento de uma operação. Cada endpoint precisará validar a identidade,
@@ -79,14 +78,14 @@ Java exercitam esse protocolo, concorrência e rollback em schema temporário.
 
 O serviço publica aposta/opções atomicamente, oferece Sim/Não para binárias e
 copia os prazos do grupo. Não expõe endpoints de edição da proposta, opções ou
-palpites. Ainda faltam cancelamento, crédito diário, pagamentos, decisão do dono,
-retirada de contestações, transferência/sucessão, saídas/remoções e encerramento
-automático por prazo.
+palpites. O ciclo de resultado, retirada de contestações por saída e conclusão
+automática está implementado em [resultados.md](resultados.md). Ainda faltam
+crédito diário, transferência/sucessão e as APIs de saída/remoção.
 
 O histórico não atualiza automaticamente a carteira, nem a carteira gera histórico.
 Essas escritas devem ser feitas juntas na mesma transação. Isso já ocorre na
-reserva e no crédito inicial; os demais tipos de movimentação ainda não têm fluxo
-implementado. As restrições impedem duplicações e saldos negativos, mas não
+reserva, no crédito inicial e nas conclusões financeiras. As restrições impedem
+duplicações e saldos negativos, mas não
 substituem essas transações.
 
 O Flask deve filtrar cada consulta pelo grupo autorizado. A credencial de leitura
@@ -99,8 +98,13 @@ término ou aguarda resultado; essa derivação evita depender de um job para
 rejeitar palpites depois dos 90%.
 
 Se houver nova contestação após uma decisão antecipada, cria-se novo registro;
-só pode haver uma pendente por participante/aposta. O backend precisará garantir
+só pode haver uma pendente por participante/aposta. O backend garante
 que só contestações pendentes na decisão sejam resolvidas por ela.
 
-Chat, convites, pedidos de entrada, amizades e chat privado não estão modelados
-nestas migrações. São escopo posterior, sem alteração das regras do documento.
+A V007 acrescenta amizades e mensagens de grupo/privadas, com autorização no
+Spring e RLS restrita à conta técnica do writer. Consulte [chats.md](chats.md).
+Convites e pedidos de entrada permanecem para uma etapa posterior.
+
+A V008 acrescenta o motivo da conclusão e os eventos de saída usados pelo
+processamento automático. As tabelas de resultados e contestações da V003 são
+reutilizadas. Prêmios internos permanecem em aberto.

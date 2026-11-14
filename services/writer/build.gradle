@@ -32,4 +32,9 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.add('-parameters')
 }
 
-tasks.named('test') { useJUnitPlatform() }
+tasks.named('test') {
+    useJUnitPlatform()
+    if (System.getenv('GAMBLR_IT') == 'true') {
+        testLogging { events 'started', 'passed', 'failed' }
+    }
+}

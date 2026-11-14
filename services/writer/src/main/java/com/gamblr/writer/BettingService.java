@@ -56,7 +56,7 @@ public class BettingService {
         if (rows.isEmpty()) throw ApiError.forbidden();
     }
     private void creditFirstEntry(UUID group, UUID user, BigDecimal points) {
-        jdbc.update("INSERT INTO memberships(group_id,user_id,role) VALUES (?,?,'MEMBER')", group, user);
+        jdbc.update("INSERT INTO memberships(group_id,user_id,role,first_joined_at,joined_at) VALUES (?,?,'MEMBER',clock_timestamp(),clock_timestamp())", group, user);
         jdbc.update("INSERT INTO wallets(group_id,user_id,available_points) VALUES (?,?,?)", group, user, points);
         jdbc.update("INSERT INTO point_movements(group_id,user_id,kind,available_delta,reserved_delta,operation_key) VALUES (?,?,'INITIAL_CREDIT',?,0,'initial')", group, user, points);
     }

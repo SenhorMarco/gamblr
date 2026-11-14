@@ -1,7 +1,7 @@
 -- Somente leitura: execute no SQL Editor depois de V002-V004.
 SELECT tablename, tableowner FROM pg_tables
 WHERE schemaname = 'gamblr' ORDER BY tablename;
--- 10 tabelas em V004, 11 apos V005; proprietario gamblr_migrator.
+-- 10 tabelas em V004, 11 apos V005, 14 apos V007, 15 apos V008; proprietario gamblr_migrator.
 
 SELECT viewname, viewowner FROM pg_views
 WHERE schemaname = 'gamblr' ORDER BY viewname;

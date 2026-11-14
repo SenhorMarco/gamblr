@@ -6,8 +6,21 @@ nem build obrigatório para usar este protótipo.
 
 ## Iniciar
 
-As migrações até V006 devem estar aplicadas. Não há nova migração nesta entrega.
+As migrações até V008 devem estar aplicadas. Para resultado e pagamento, execute
+[V008](../database/migrations/V008__bet_resolution.sql) no SQL Editor após V007.
 Use o `.env` já configurado e contas confirmadas no Supabase Auth.
+
+Para iniciar os três serviços em um único terminal, na raiz:
+
+```powershell
+.\iniciar.cmd
+```
+
+Aguarde a mensagem de serviços prontos e abra **http://127.0.0.1:5173**. Ctrl+C
+encerra os processos iniciados pelo comando. Confira [execucao-local.md](execucao-local.md)
+para opções e tratamento de porta ocupada.
+
+Para depurar os serviços separadamente, use os comandos abaixo.
 
 Mantenha os dois backends em execução, em terminais separados na raiz do projeto:
 
@@ -19,8 +32,9 @@ Mantenha os dois backends em execução, em terminais separados na raiz do proje
 .\.venv\Scripts\python.exe scripts/reader.py run
 ```
 
-Uma instância antiga do Spring precisa ser reiniciada para carregar as novas
-rotas de listagem de grupos/apostas. Não inicie duas instâncias na mesma porta.
+Reinicie o Spring e o servidor do frontend para carregar as rotas de chats e
+amizades. Não inicie duas instâncias na mesma porta. O Flask de ranking e odds
+não precisa ser alterado.
 
 Em outro terminal, também na raiz:
 
@@ -33,6 +47,19 @@ reutiliza as dependências Python já instaladas para os serviços. Não precisa
 npm nem compilação JavaScript para executar.
 
 ## Roteiro pelo navegador
+
+A interface usa uma barra azul no topo e três colunas, inspiradas no Facebook
+de 2012: grupos e amigos à esquerda, conversa selecionada ao centro e apostas do
+grupo à direita. A busca filtra os grupos pelo nome. No celular, as colunas se
+empilham para preservar a leitura e os controles.
+
+O centro permite enviar mensagens no grupo selecionado ou para um amigo após
+o aceite da amizade. A área privada não exibe apostas. A coluna do grupo começa
+com o filtro **Ativas**, permite publicar e confirmar palpites e oferece o ranking
+em uma seção expansível. Consulte o [roteiro dos chats](chats.md) para testar
+pedidos de amizade, privacidade do histórico e moderação.
+O [roteiro de resultados](resultados.md) cobre publicação do vencedor,
+contestação, decisão do dono, cancelamento e pagamento automático.
 
 1. Entre com a conta do autor.
 2. Clique em **Criar grupo** e informe nome e pontos iniciais. A interface cria
@@ -98,10 +125,10 @@ apostas exige participação atual. Grupos privados não aparecem na exploraçã
 
 ## Limites
 
-Ainda não há chat, convites, administração, remoção de integrantes, crédito diário
-automático, cancelamento, publicação/contestação de resultado ou pagamento. A tela
-informa que o fluxo termina na reserva. Os prazos de apuração/contestação são
-persistidos para a implementação posterior. Pontos são exclusivamente virtuais.
+Ainda não há convites, gestão de moderadores, saída/remoção de integrantes ou
+crédito diário automático. Resultado, contestação, cancelamento e pagamento
+estão implementados conforme [resultados.md](resultados.md). Pontos são
+exclusivamente virtuais.
 
 ## Testes
 
@@ -120,7 +147,7 @@ npm.cmd install
 ```
 
 O teste usa Edge headless e respostas simuladas para testar duas sessões,
-formulários, recarga, filtros e layout móvel. As imagens ficam em
+amizades, chats, moderação, formulários, recarga, filtros e layout móvel. As imagens ficam em
 `frontend/test-results`, ignorado pelo Git. Os testes Java usam PostgreSQL real
 em schema temporário para verificar listagens, reservas e privacidade. Os testes
 do proxy conferem restrição de rotas e ausência de credenciais privadas.

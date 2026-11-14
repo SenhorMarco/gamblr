@@ -7,6 +7,11 @@ import java.util.List;
 import java.util.UUID;
 
 final class Requests {
+    record Message(@NotBlank @Size(max=4000) String body, @NotNull UUID clientId) {}
+    record Friend(@NotNull UUID userId) {}
+    enum DecisionAction { KEEP, CHANGE, CANCEL }
+    record Result(@NotNull UUID optionId) {}
+    record Decision(@NotNull DecisionAction action, UUID optionId) {}
     enum Visibility { PRIVATE, PUBLIC }
     enum EntryMode { INVITE, IMMEDIATE, REQUEST }
     enum InvitePolicy { ALL_MEMBERS, MODERATORS }

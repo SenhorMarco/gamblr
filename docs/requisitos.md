@@ -76,6 +76,8 @@ Distribuição dos pontos
 
 RF-07 Pagamento aos vencedores — Cada vencedor recupera integralmente os pontos que apostou e recebe uma parcela dos pontos perdidos. Para calcular a parcela, multiplica-se o total de pontos perdidos pelo valor apostado pelo vencedor e divide-se pelo total de pontos apostados pelos vencedores. O sistema arredonda a parcela individual para baixo e deixa a sobra sem distribuição. A odd decimal é calculada separadamente, pela contagem de votos.
 
+Se a opção vencedora tiver apenas palpites de zero pontos, a aposta é encerrada sem distribuir os pontos perdidos. Os palpites vencedores recebem zero e os pontos dos perdedores são descontados definitivamente. Decisão confirmada para evitar divisão por zero.
+
 RF-12 Devolução por cancelamento — Ao cancelar uma aposta, o sistema devolve a cada participante a quantidade exata de pontos que ele apostou, inclusive se ele já tiver saído do grupo ou sido removido.
 
 RF-21 Resultado sem vencedores — Se ninguém tiver escolhido a opção vencedora no resultado final, o sistema encerra a aposta e desconta definitivamente os pontos reservados, sem novo débito no saldo disponível.

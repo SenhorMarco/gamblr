@@ -9,13 +9,17 @@ import urllib.request
 from flask import Flask, Response, jsonify, request, send_from_directory
 
 UUID = r"[a-fA-F0-9-]{36}"
+RESOLUTION_GET = rf"api/bets/{UUID}/resolution"
+RESOLUTION_POST = rf"api/bets/{UUID}/(?:result|contests|decision|cancel)"
 ROUTES = {
     "writer": {
-        "GET": [r"api/groups",r"api/groups/public",rf"api/groups/{UUID}/bets",rf"api/groups/{UUID}/wallet/me",rf"api/bets/{UUID}",rf"api/bets/{UUID}/prediction/me"],
-        "POST": [r"api/me",r"api/groups",rf"api/groups/{UUID}/members/me",rf"api/groups/{UUID}/bets",rf"api/bets/{UUID}/predictions"],
+        "GET": [r"api/groups",r"api/groups/public",rf"api/groups/{UUID}/bets",rf"api/groups/{UUID}/wallet/me",rf"api/bets/{UUID}",rf"api/bets/{UUID}/prediction/me",r"api/users",r"api/friendships",rf"api/groups/{UUID}/messages",rf"api/friends/{UUID}/messages"],
+        "POST": [r"api/me",r"api/groups",rf"api/groups/{UUID}/members/me",rf"api/groups/{UUID}/bets",rf"api/bets/{UUID}/predictions",r"api/friendships",rf"api/friendships/{UUID}/(?:accept|decline)",rf"api/groups/{UUID}/messages",rf"api/groups/{UUID}/messages/[0-9]+/delete",rf"api/friends/{UUID}/messages"],
     },
     "reader": {"GET": [rf"api/groups/{UUID}/ranking",rf"api/bets/{UUID}/odds"]},
 }
+ROUTES["writer"]["GET"].append(RESOLUTION_GET)
+ROUTES["writer"]["POST"].append(RESOLUTION_POST)
 
 
 def create_app(config):
@@ -80,14 +84,22 @@ def create_app(config):
     @app.route("/<service>/<path:path>",methods=["GET","POST"])
     def proxy(service,path):
         allowed = ROUTES.get(service,{}).get(request.method,[])
-        if not any(re.fullmatch(pattern,path) for pattern in allowed) or request.query_string:
+        query = ""
+        if request.query_string:
+            if service == "writer" and request.method == "GET" and path == "api/users" and set(request.args) == {"name"} and len(request.args.getlist("name")) == 1 and 2 <= len(request.args["name"]) <= 80:
+                query = "?" + urllib.parse.urlencode({"name":request.args["name"]})
+            elif service == "writer" and request.method == "GET" and re.fullmatch(rf"api/(groups|friends)/{UUID}/messages",path) and set(request.args) == {"before"} and len(request.args.getlist("before")) == 1 and re.fullmatch(r"[1-9][0-9]{0,18}",request.args["before"]):
+                query = "?" + urllib.parse.urlencode({"before":request.args["before"]})
+            else:
+                return jsonify(code="NOT_FOUND",message="Rota nao disponivel."),404
+        if not any(re.fullmatch(pattern,path) for pattern in allowed):
             return jsonify(code="NOT_FOUND",message="Rota nao disponivel."),404
         headers = {"Accept":"application/json","Content-Type":"application/json"}
         authorization = request.headers.get("Authorization")
         if authorization:
             headers["Authorization"] = authorization
         data = request.get_data() if request.method == "POST" else None
-        upstream = urllib.request.Request(f"http://127.0.0.1:{ports[service]}/{path}",data=data,headers=headers,method=request.method)
+        upstream = urllib.request.Request(f"http://127.0.0.1:{ports[service]}/{path}{query}",data=data,headers=headers,method=request.method)
         try:
             with opener.open(upstream,timeout=25) as response:
                 return Response(response.read(),status=response.status,content_type="application/json")
