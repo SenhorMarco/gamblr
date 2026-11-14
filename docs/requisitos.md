@@ -161,6 +161,16 @@ RF-12 Devolução por cancelamento — Ao cancelar uma aposta, o sistema devolve
 
 RF-21 Resultado sem vencedores — Se ninguém tiver escolhido a opção vencedora no resultado final, o sistema encerra a aposta e desconta definitivamente os pontos reservados, sem novo débito no saldo disponível.
 
+Feed de apostas
+
+**Status: Implementado** — Botão Feed abaixo de Explorar grupos; listagem por publicação mais recente dos grupos em que o usuário participa, com acesso à aposta no grupo (`frontend/static/app.js`).
+
+RF-33 Feed de apostas dos grupos — O usuário pode acessar um Feed que reúne as apostas dos grupos dos quais é integrante atual, ordenadas da publicação mais recente para a mais antiga. Cada item identifica o grupo, a pergunta, a data de publicação e a situação. Ao selecionar Ver aposta, o sistema abre o grupo correspondente com a aposta selecionada. A listagem informa quando não há apostas ou quando algum grupo não pôde ser carregado.
+
+**Status: Implementado** — Filtros combináveis por situação, grupos, datas e texto, com limpeza, contagem de resultados e validação do intervalo (`frontend/static/feed.js` e `frontend/static/app.js`). Testes de filtragem em `frontend/tests/feed.test.js`.
+
+RF-34 Filtros do Feed — O usuário pode combinar filtros por situação (todas, ativas, aceitando palpites, aguardando resultado, resultado publicado, concluídas ou canceladas), um ou mais grupos dos quais participa, intervalo de datas de publicação e texto da pergunta. Sem seleção de grupos, o Feed considera todos os seus grupos. O intervalo inclui os dias inicial e final no horário local do usuário; datas invertidas exibem erro. Os resultados preservam a ordem de publicação mais recente. O usuário pode limpar todos os filtros e consultar a quantidade de apostas encontradas. A interface informa quando nenhuma aposta corresponde aos filtros. Ativas inclui apostas em andamento e com resultado publicado; aguardando resultado inclui apostas cujo término já passou e ainda não possuem resultado publicado.
+
 Requisitos técnicos
 
 RT-01 Execução na rede local — Uma única máquina executa os serviços de backend. Os demais computadores acessam a aplicação e se conectam ao backend da máquina anfitriã pela mesma rede Wi-Fi.
