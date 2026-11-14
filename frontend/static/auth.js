@@ -31,7 +31,15 @@ export class AuthClient {
     return data;
   }
   async signIn(email, password) { const session = await this.request('token?grant_type=password', {email,password}); this.generation++; this.save(session); return session; }
-  async signUp(email, password, name) { const data = await this.request('signup', {email,password,data:{display_name:name}}); if(data.access_token) {this.generation++;this.save(data);} return data; }
+  async signUp(email, password, name) {
+    const data = await this.request('signup', {email,password,data:{display_name:name}});
+    // Auth returns an obfuscated user with no identities for an existing account.
+    if (!data.access_token && Array.isArray(data.identities) && data.identities.length === 0) {
+      throw new ClientError(messages.user_already_exists, 409, 'user_already_exists');
+    }
+    if (data.access_token) { this.generation++; this.save(data); }
+    return data;
+  }
   async refresh() {
     if (this.refreshing) return this.refreshing;
     if (!this.session) throw new ClientError('Entre novamente para continuar.',401);
