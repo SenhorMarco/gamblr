@@ -164,3 +164,11 @@ A odd passa a ser total de pontos dividido pelos pontos da opção. Sem pontos,
 a odd é nula. Votos continuam sendo uma contagem separada. A barra da interface
 mostra a participação aproximada dos pontos, calculada pela odd arredondada.
 Recarregue a página após atualizar os arquivos.
+
+## Atualização contínua (RF-13)
+
+A interface mantém uma consulta autenticada de odds pendente por até 15 segundos,
+usando `X-Odds-Version`. O reader verifica mudanças a cada 500 ms com snapshots
+novos e revalida a participação; responde ao detectar mudança ou ao vencer a espera.
+O cliente reconecta automaticamente e pausa novas consultas em abas ocultas.
+O proxy encaminha apenas versões SHA-256 válidas. Não exige nova migração.

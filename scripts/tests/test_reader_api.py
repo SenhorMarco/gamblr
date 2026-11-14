@@ -80,6 +80,26 @@ class ReaderApiTests(unittest.TestCase):
     def get(self, route, token=None):
         return self.client.get(route, headers={"Authorization":"Bearer "+(token or self.token())})
 
+    def test_long_poll_returns_changed_odds_with_new_snapshot(self):
+        route = f"/api/bets/{self.bet}/odds"
+        version = self.get(route).json["version"]
+        def change(_):
+            row = list(self.db.odds[0]); row[4] = 3
+            self.db.odds[0] = tuple(row)
+        with patch("gamblr_reader.time.sleep", side_effect=change):
+            response = self.client.get(route, headers={"Authorization":"Bearer "+self.token(), "X-Odds-Version":version})
+        self.assertEqual(200, response.status_code)
+        self.assertNotEqual(version, response.json["version"])
+        self.assertEqual(3, response.json["options"][0]["votes"])
+        self.assertTrue(self.db.closed)
+
+    def test_long_poll_rechecks_membership(self):
+        route = f"/api/bets/{self.bet}/odds"
+        version = self.get(route).json["version"]
+        with patch("gamblr_reader.time.sleep", side_effect=lambda _: setattr(self.db, "member", False)):
+            response = self.client.get(route, headers={"Authorization":"Bearer "+self.token(), "X-Odds-Version":version})
+        self.assertEqual(403, response.status_code)
+
     def test_missing_token_never_opens_database(self):
         response = self.client.get(f"/api/groups/{self.group}/ranking")
         self.assertEqual(401,response.status_code)

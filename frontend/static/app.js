@@ -29,11 +29,11 @@ const betStatus = bet => bet.state==='SETTLED'?'Concluída':bet.state==='CANCELL
 function toast(message,error=false) {clearTimeout(toastTimer);$('toast').textContent=message;$('toast').className=error?'error':'';show($('toast'));toastTimer=setTimeout(()=>show($('toast'),false),5500);}
 function errorIn(form,error) {const target=form.querySelector('.form-error');target.textContent=error.message || 'Não foi possível concluir a operação.';show(target);}
 async function submit(form, action) {const button=form.querySelector('button[type=submit]');button.disabled=true;show(form.querySelector('.form-error'),false);try{await action();}catch(error){errorIn(form,error);}finally{button.disabled=false;}}
-async function api(service,path,{method='GET',body}={},retried=false) {
+async function api(service,path,{method='GET',body,headers={}}={},retried=false) {
   const token=await auth.token(); let response;
-  try {response=await fetch(`/${service}${path}`,{method,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});}
+  try {response=await fetch(`/${service}${path}`,{method,headers:{...headers,Authorization:`Bearer ${token}`,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});}
   catch {throw new ClientError('Conexão interrompida. Confira o estado antes de repetir uma operação.');}
-  if(response.status===401 && !retried) {await auth.refresh();return api(service,path,{method,body},true);}
+  if(response.status===401 && !retried) {await auth.refresh();return api(service,path,{method,body,headers},true);}
   const data=await response.json().catch(()=>({}));
   if(!response.ok) {if(response.status===401)auth.clear();throw new ClientError(data.message || 'Não foi possível concluir a operação.',response.status,data.code);}
   return data;
@@ -142,11 +142,16 @@ function renderDetail() {
   detail.append(form);resolutions.attach(bet,detail);
   if(state.group?.ownerId===state.profile.id){const remove=el('button','button secondary delete-bet','Apagar aposta');remove.id='delete-bet-button';remove.type='button';const note=el('p','prediction-note',active(bet)?'Apagar cancela esta aposta e devolve todas as reservas.':'Apagar oculta esta aposta e preserva os pagamentos já concluídos.');detail.append(note,remove);remove.onclick=async()=>{remove.disabled=true;try{await api('writer',`/api/bets/${bet.id}/delete`,{method:'POST'});state.selected=null;state.detailKey='';await refreshGroup(true);chats.refresh();toast('Aposta apagada.');}catch(error){toast(error.message,true);remove.disabled=false;}};}
 }
-async function refreshOdds() {
-  const id=state.selected;if(!id || state.mode!=='group')return;
-  try{const data=await api('reader',`/api/bets/${id}/odds`);if(state.selected!==id)return;for(const option of data.options){const odd=document.querySelector(`[data-odd="${option.optionId}"]`),votes=document.querySelector(`[data-votes="${option.optionId}"]`);const bar=document.querySelector(`[data-share="${option.optionId}"]`);if(bar){const value=Number(option.decimalOdds);bar.value=Number.isFinite(value)&&value>0?Math.min(100,100/value):0;bar.title=`Aproximadamente ${bar.value.toFixed(1)}% dos pontos`; }if(odd)odd.textContent=option.decimalOdds===null?'—':String(option.decimalOdds).replace('.',',');if(votes)votes.textContent=`${option.votes} voto${option.votes===1?'':'s'}`;}}
+let oddsVersion = null, oddsBusy = false;
+async function refreshOdds(live=false) {
+  const id=state.selected;if(!id || state.mode!=='group' || oddsBusy)return;
+  oddsBusy=true;
+  try{const data=await api('reader',`/api/bets/${id}/odds`,{headers:live&&oddsVersion?.id===id?{'X-Odds-Version':oddsVersion.version}:{}});oddsVersion={id,version:data.version};if(state.selected!==id)return;for(const option of data.options){const odd=document.querySelector(`[data-odd="${option.optionId}"]`),votes=document.querySelector(`[data-votes="${option.optionId}"]`);const bar=document.querySelector(`[data-share="${option.optionId}"]`);if(bar){const value=Number(option.decimalOdds);bar.value=Number.isFinite(value)&&value>0?Math.min(100,100/value):0;bar.title=`Aproximadamente ${bar.value.toFixed(1)}% dos pontos`; }if(odd)odd.textContent=option.decimalOdds===null?'—':String(option.decimalOdds).replace('.',',');if(votes)votes.textContent=`${option.votes} voto${option.votes===1?'':'s'}`;}}
   catch{if(state.selected===id)document.querySelectorAll('[data-votes]').forEach(node=>node.textContent='odds indisponíveis');}
+  finally{oddsBusy=false;}
 }
+async function followOdds(){while(true){if(auth?.session&&state.profile&&!document.hidden&&state.mode==='group'&&state.selected)await refreshOdds(true);await new Promise(resolve=>setTimeout(resolve,500));}}
+followOdds();
 function renderRanking() {
   groupSubtitle(state.ranking.length);
   const fragment=document.createDocumentFragment();for(const row of state.ranking){const item=el('li','rank-row'+(row.userId===state.profile.id?' me':''));item.append(el('span','rank-position',String(row.position).padStart(2,'0')),el('span','avatar',row.displayName.slice(0,1).toUpperCase()),el('span','rank-name',row.displayName+(row.userId===state.profile.id?' (você)':'')),el('strong','rank-points',points(row.availablePoints)));fragment.append(item);}$('ranking-list').replaceChildren(fragment);
