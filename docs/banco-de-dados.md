@@ -1,5 +1,11 @@
 # Banco de dados: permissões e migrações
 
+**Instalação nova:** execute bootstrap uma vez e V001–V011 em ordem numérica,
+como `postgres`, um arquivo completo por consulta. Pare em caso de erro e registre
+as versões aplicadas; não repita arquivos já aplicados. A sequência completa e
+configuração inicial estão no [README](../README.md#primeira-instalação).
+Os trechos abaixo também explicam atualizações a partir de versões antigas.
+
 Para cores e títulos por pontos, após V001–V010, execute o arquivo completo
 [V011__group_personalization.sql](../database/migrations/V011__group_personalization.sql)
 como `postgres`. Ele acrescenta preços, personalizações, comprovantes de compra
@@ -100,7 +106,8 @@ GAMBLR_READ_DB_PASSWORD=""
 Substitua o sufixo depois do ponto pelo mesmo project-ref do usuário administrativo
 no Session pooler e preencha cada senha. As três conexões usam o mesmo host, porta,
 banco e certificado já validados. Fora do pooler, o formato do usuário pode mudar.
-Os serviços ainda não carregam essas variáveis; a integração será feita no código.
+Os lançadores `scripts/writer.py` e `scripts/reader.py` carregam as variáveis
+permitidas para cada serviço.
 
 ### Validar as três contas
 
@@ -129,11 +136,12 @@ As primeiras tabelas e views estão preparadas nos seguintes arquivos:
 
 Leia [modelo-de-dados.md](modelo-de-dados.md) para conhecer as garantias e os limites.
 O esquema prepara a persistência. O [serviço Spring Boot](writer.md) implementa
-criação de grupo, publicação e reserva de palpites; a distribuição ainda não foi implementada.
+criação de grupo, publicação, reserva e distribuição dos pontos na conclusão
+financeira; veja [resultados](resultados.md).
 
 ### Testar antes de aplicar
 
-Com V001 aplicada e o schema ainda sem tabelas de domínio, execute:
+Somente em banco de teste isolado, com V001 aplicada e schema sem tabelas, execute:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/test_database_schema.py
@@ -143,7 +151,7 @@ O script usa a conta do migrador, abre uma transação, cria a estrutura, execut
 dados/verificações temporários e sempre encerra com `ROLLBACK`. Não deixa tabelas
 ou dados persistidos. Se já houver tabelas no schema, recusa executar. Testa
 restrições, views e privilégios efetivos cadastrados; não simula endpoints nem
-o fluxo concorrente de reserva/liquidação ainda não implementado.
+o fluxo concorrente de reserva/liquidação, coberto pelos testes Java.
 
 ### Aplicar definitivamente
 
@@ -167,7 +175,7 @@ as permissões e as três conexões em modo somente leitura, use:
 Esse comando pode ser repetido após aplicar as migrações. Diferentemente de
 `test_database_schema.py`, ele não cria tabelas nem dados temporários: consulta
 apenas os metadados. Não verifica pelo PostgreSQL se a Data API foi desativada no
-painel nem substitui os futuros testes do backend.
+painel nem substitui os testes de integração do backend.
 
 ### Evolução posterior
 
@@ -177,7 +185,8 @@ Ela deve ser aplicada uma vez após V004, antes de usar `POST /api/me` no servi�
 O guia [writer.md](writer.md) descreve configuração, endpoints e testes.
 Para habilitar a autorização do Flask, aplique também
 [`V006__reader_membership_identity.sql`](../database/migrations/V006__reader_membership_identity.sql).
-Ela amplia a view de integrantes com o vínculo JWT e mantém 11 tabelas e 3 views.
+Na etapa V006, ela amplia a view com o vínculo JWT e mantém 11 tabelas e 3 views;
+V007–V011 ampliam o modelo.
 O guia [reader.md](reader.md) descreve a execução e as consultas.
 
 A evolução dos serviços e das transações deve preservar os seguintes pontos:
@@ -187,12 +196,12 @@ A evolução dos serviços e das transações deve preservar os seguintes pontos
 - Reserva e registro do palpite na mesma transação, com controle de concorrência.
 - Prazos do grupo copiados para a aposta na publicação e instantes com fuso.
 - Ranking por saldo disponível, desempate pela criação da conta.
-- Odds por contagem de votos; distribuição por valores apostados.
+- Odds por pontos desde V010; votos contam participantes separadamente; distribuição por valores apostados.
 - Histórico de movimentações e proteção contra liquidação/crédito duplicados.
 
 Não criaremos tabelas de prêmio: essa possibilidade continua em aberto. O provedor
 de autenticação escolhido é Supabase Auth. As tabelas sozinhas também não implementam regras
-temporais, autorização ou transações: isso fará parte da implementação do backend.
+temporais, autorização ou transações: essas responsabilidades estão nos backends.
 
 Cada alteração terá um arquivo `V002__...sql`, `V003__...sql` etc. Não altere uma
 migração já aplicada. Até escolher e integrar o executor de migrações, registre
