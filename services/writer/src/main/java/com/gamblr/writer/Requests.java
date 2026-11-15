@@ -7,6 +7,11 @@ import java.util.List;
 import java.util.UUID;
 
 final class Requests {
+    enum PersonalizationAction { NAME_COLOR, TITLE, TITLE_COLOR }
+    record PersonalizationPrices(@NotNull @DecimalMin("0") BigDecimal nameColor,
+        @NotNull @DecimalMin("0") BigDecimal title, @NotNull @DecimalMin("0") BigDecimal titleColor) {}
+    record PersonalizationPurchase(@NotNull PersonalizationAction action, @NotBlank @Size(max=200) String value,
+        @NotNull UUID clientId, @NotNull @DecimalMin("0") BigDecimal expectedPrice) {}
     record Message(@NotBlank @Size(max=4000) String body, @NotNull UUID clientId) {}
     record Friend(@NotNull UUID userId) {}
     enum Role { MEMBER, MODERATOR }

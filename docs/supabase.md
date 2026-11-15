@@ -140,7 +140,8 @@ está descrita em [writer.md](writer.md); a do Flask em [reader.md](reader.md).
 A autenticação escolhida é [Supabase Auth](supabase-auth.md).
 Os instantes do domínio serão representados com fuso (`timestamptz`); o crédito
 diário deverá seguir `America/Sao_Paulo`, conforme RF-02, independentemente do
-fuso exibido na sessão. Prêmios internos também permanecem em aberto.
+fuso exibido na sessão. Cores e títulos por pontos exigem a V011, conforme
+[personalização](personalizacao.md). Outros prêmios internos permanecem em aberto.
 
 ## Referências oficiais
 

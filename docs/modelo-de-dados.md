@@ -24,6 +24,7 @@ do fluxo de aposta de grupo. Não constitui uma implementação completa dos req
 | `membership_periods`, `group_daily_rates`, `group_daily_runs` (V009) | Participações, valores históricos e processamento diário | RF-02 |
 | `current_group_members` | Participação atual e vínculo emissor/subject para autorização do Flask (V006) | RF-13, RF-15 |
 | `group_ranking` | Ranking de membros atuais por saldo disponível e antiguidade da conta | RF-20 |
+| `personalization_purchases` (V011) | Comprovantes imutáveis de compras com chave de repetição, valor e preço pago | RF-35 a RF-38 |
 | `bet_odds` | Votos e odds agregados por opção, sem valor/autor dos palpites | RF-05, RF-13, RF-14 |
 
 As consultas devem usar o prefixo `gamblr.`, por exemplo `gamblr.bets`.
@@ -46,7 +47,8 @@ As consultas devem usar o prefixo `gamblr.`, por exemplo `gamblr.bets`.
   guarda apenas `MEMBER` ou `MODERATOR`, evitando dois indicadores de dono.
 - Não há exclusões em cascata. Não remover registros ao sair de grupo. O fluxo
   de exclusão do grupo e sua política de retenção ainda precisam de implementação.
-- Não há taxa, compra/saque, redistribuição das sobras ou prêmios internos.
+- Não há taxa, compra/saque ou redistribuição das sobras. Os prêmios internos
+  disponíveis são as [personalizações por pontos](personalizacao.md) da V011.
 
 ## O que o banco já garante
 
@@ -113,8 +115,14 @@ Convites e pedidos de entrada são acrescentados pela V009.
 
 A V008 acrescenta o motivo da conclusão e os eventos de saída usados pelo
 processamento automático. As tabelas de resultados e contestações da V003 são
-reutilizadas. Prêmios internos permanecem em aberto.
+reutilizadas. Personalizações por pontos são acrescentadas pela V011.
 
 A V009 guarda períodos de participação e valores diários históricos, registra
 as datas processadas e oculta grupos/apostas excluídos sem apagar carteiras ou
 movimentos. Os eventos de publicação de apostas aparecem no chat.
+
+A V011 acrescenta três preços opcionais em `groups`, as cores e o título em
+`memberships`, compras imutáveis e o movimento `PERSONALIZATION`.
+As cores e o título são expostos também pelo ranking; sair não apaga a
+personalização. Compras e débitos são transacionais, e remoções nunca geram
+reembolso. Veja [personalização](personalizacao.md).

@@ -17,8 +17,8 @@ public class GroupService {
     private final ServerTime time;
     GroupService(JdbcTemplate jdbc,GroupLock locks,BettingService betting,ResolutionService resolutions,ServerTime time) {this.jdbc=jdbc;this.locks=locks;this.betting=betting;this.resolutions=resolutions;this.time=time;}
     record Settings(UUID id,UUID ownerId,String name,BigDecimal initialPoints,BigDecimal dailyPoints,long settlementSeconds,long contestSeconds,String visibility,String entryMode,String invitePolicy,String myRole,boolean canInvite) {}
-    record Member(UUID userId,String displayName,String role,Instant firstJoinedAt) {}
-    record JoinRequest(UUID id,UUID userId,String displayName) {}
+    record Member(UUID userId,String displayName,String role,Instant firstJoinedAt,String nameColor,String title,String titleColor) {}
+    record JoinRequest(UUID id,UUID userId,String displayName,String nameColor,String title,String titleColor) {}
     record Invitation(UUID id,UUID groupId,String groupName,String senderName) {}
     record Exit(UUID successorId,boolean groupDeleted) {}
     private record Group(UUID id,UUID owner,String invitePolicy) {}
@@ -50,7 +50,7 @@ public class GroupService {
     @Transactional
     public List<Member> members(UUID user,UUID group) {
         Group current=lock(group);role(current,user);
-        return jdbc.query("SELECT m.user_id,u.display_name,m.role,m.first_joined_at FROM memberships m JOIN app_users u ON u.id=m.user_id WHERE m.group_id=? AND m.left_at IS NULL ORDER BY m.first_joined_at,m.user_id",(rs,row)->new Member(rs.getObject(1,UUID.class),rs.getString(2),current.owner().equals(rs.getObject(1,UUID.class))?"OWNER":rs.getString(3),rs.getTimestamp(4).toInstant()),group);
+        return jdbc.query("SELECT m.user_id,u.display_name,m.role,m.first_joined_at,m.name_color,m.title,m.title_color FROM memberships m JOIN app_users u ON u.id=m.user_id WHERE m.group_id=? AND m.left_at IS NULL ORDER BY m.first_joined_at,m.user_id",(rs,row)->new Member(rs.getObject(1,UUID.class),rs.getString(2),current.owner().equals(rs.getObject(1,UUID.class))?"OWNER":rs.getString(3),rs.getTimestamp(4).toInstant(),rs.getString(5),rs.getString(6),rs.getString(7)),group);
     }
     @Transactional
     public void setRole(UUID user,UUID group,UUID target,Requests.MemberRole request) {
@@ -124,7 +124,7 @@ public class GroupService {
     @Transactional
     public List<JoinRequest> requests(UUID user,UUID group) {
         Group current=lock(group);moderator(current,user);
-        return jdbc.query("SELECT r.id,u.id,u.display_name FROM group_join_requests r JOIN app_users u ON u.id=r.user_id WHERE r.group_id=? AND r.state='PENDING' ORDER BY r.created_at,r.id",(rs,row)->new JoinRequest(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),rs.getString(3)),group);
+        return jdbc.query("SELECT r.id,u.id,u.display_name,m.name_color,m.title,m.title_color FROM group_join_requests r JOIN app_users u ON u.id=r.user_id LEFT JOIN memberships m ON m.group_id=r.group_id AND m.user_id=r.user_id WHERE r.group_id=? AND r.state='PENDING' ORDER BY r.created_at,r.id",(rs,row)->new JoinRequest(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),rs.getString(3),rs.getString(4),rs.getString(5),rs.getString(6)),group);
     }
     @Transactional
     public void answerRequest(UUID user,UUID group,UUID request,boolean accept) {

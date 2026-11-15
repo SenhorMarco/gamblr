@@ -1,5 +1,10 @@
 # Banco de dados: permissões e migrações
 
+Para cores e títulos por pontos, após V001–V010, execute o arquivo completo
+[V011__group_personalization.sql](../database/migrations/V011__group_personalization.sql)
+como `postgres`. Ele acrescenta preços, personalizações, comprovantes de compra
+e débito de pontos, com RLS e permissões. Veja [personalização](personalizacao.md).
+
 Para administração e crédito diário, após V001–V008, execute o arquivo completo
 [V009__group_administration.sql](../database/migrations/V009__group_administration.sql)
 como `postgres`. Veja [administracao.md](administracao.md).

@@ -77,7 +77,8 @@ class WriterIntegrationTest {
             connection.setAutoCommit(false);
             for (String file : List.of("V001__schema_permissions.sql", "V002__users_groups_balances.sql",
                 "V003__bets_predictions_movements.sql", "V004__ranking_odds_views.sql", "V005__external_identities.sql",
-                "V006__reader_membership_identity.sql", "V007__friendships_messages.sql", "V008__bet_resolution.sql", "V009__group_administration.sql")) {
+                "V006__reader_membership_identity.sql", "V007__friendships_messages.sql", "V008__bet_resolution.sql", "V009__group_administration.sql",
+                "V010__point_based_odds.sql", "V011__group_personalization.sql")) {
                 String sql = Files.readString(Path.of("../../database/migrations", file))
                     .replace("gamblr.", schema+".").replace("SCHEMA gamblr", "SCHEMA "+schema)
                     .replaceAll("(?m)^(BEGIN;|COMMIT;)\\s*$", "");
@@ -128,6 +129,85 @@ class WriterIntegrationTest {
         }
     }
     @BeforeEach void resetTime() { NOW.set(PUBLICATION); }
+
+    Requests.PersonalizationPurchase purchase(Requests.PersonalizationAction action,String value,String price) {
+        return new Requests.PersonalizationPurchase(action,value,UUID.randomUUID(),new BigDecimal(price));
+    }
+    @Test void personalizationDebitsOncePreservesGroupScopeAndNeverRefunds() throws Exception {
+        var f=adminCycle();var personal=context.getBean(PersonalizationService.class);
+        assertNull(personal.state(f.user,f.group).prices().title());
+        assertThrows(ApiError.class,()->personal.buy(f.user,f.group,purchase(Requests.PersonalizationAction.TITLE,"Campeão","0")));
+        assertThrows(ApiError.class,()->personal.configure(f.user,f.group,new Requests.PersonalizationPrices(BigDecimal.TEN,new BigDecimal("20"),new BigDecimal("5"))));
+        personal.configure(f.owner,f.group,new Requests.PersonalizationPrices(BigDecimal.TEN,new BigDecimal("20"),new BigDecimal("5")));
+        var stateResponse=request("GET","/api/groups/"+f.group+"/personalization",f.userSubject,null);
+        assertEquals(200,stateResponse.statusCode(),stateResponse.body());
+        assertEquals("\"20\"",json.readTree(stateResponse.body()).get("prices").get("title").toString());
+        var title=purchase(Requests.PersonalizationAction.TITLE,"Campeão","20");
+        var bought=request("POST","/api/groups/"+f.group+"/personalization/purchases",f.userSubject,json.writeValueAsString(title));
+        assertEquals(200,bought.statusCode(),bought.body());personal.buy(f.user,f.group,title);
+        personal.buy(f.user,f.group,purchase(Requests.PersonalizationAction.NAME_COLOR,"#12AB34","10"));
+        personal.buy(f.user,f.group,purchase(Requests.PersonalizationAction.TITLE_COLOR,"#123456","5"));
+        money("65",service.wallet(f.user,f.group).availablePoints());
+        assertEquals("#12ab34",personal.state(f.user,f.group).style().nameColor());
+        assertEquals("Campeão",administration.members(f.owner,f.group).stream().filter(m->m.userId().equals(f.user)).findFirst().orElseThrow().title());
+        var chat=context.getBean(ChatService.class);
+        var friendship=chat.request(f.owner,f.user);chat.decide(f.user,friendship.id(),true);
+        chat.sendPrivate(f.user,f.owner,new Requests.Message("Privada",UUID.randomUUID()));
+        var privateMessage=chat.privateMessages(f.owner,f.user,null).messages().getLast();
+        assertNull(privateMessage.nameColor());assertNull(privateMessage.title());assertNull(privateMessage.titleColor());
+        chat.sendGroup(f.user,f.group,new Requests.Message("Mensagem",UUID.randomUUID()));
+        assertEquals("Campeão",chat.groupMessages(f.owner,f.group,null).messages().getLast().title());
+        var changed=purchase(Requests.PersonalizationAction.TITLE,"Novo título","20");personal.buy(f.user,f.group,changed);
+        assertEquals("#123456",personal.state(f.user,f.group).style().titleColor());
+        assertEquals("Novo título",chat.groupMessages(f.owner,f.group,null).messages().getLast().title());
+        UUID otherGroup=service.createGroup(f.owner,groupRequest()).id();service.joinPublicGroup(f.user,otherGroup);
+        assertNull(personal.state(f.user,otherGroup).style().title());
+        administration.leave(f.user,f.group);service.joinPublicGroup(f.user,f.group);
+        assertEquals("Novo título",personal.state(f.user,f.group).style().title());
+        personal.removeTitle(f.owner,f.group,f.user);
+        assertNull(personal.state(f.user,f.group).style().title());assertNull(personal.state(f.user,f.group).style().titleColor());
+        assertEquals("#12ab34",personal.state(f.user,f.group).style().nameColor());money("45",service.wallet(f.user,f.group).availablePoints());
+        personal.buy(f.user,f.group,changed);assertNull(personal.state(f.user,f.group).style().title()); // retry nao restaura titulo removido
+        var conflicting=new Requests.PersonalizationPurchase(title.action(),"Outro",title.clientId(),title.expectedPrice());
+        assertThrows(ApiError.class,()->personal.buy(f.user,f.group,conflicting));
+        assertEquals(4,database.queryForObject("SELECT count(*) FROM point_movements WHERE group_id=? AND user_id=? AND kind='PERSONALIZATION'",Integer.class,f.group,f.user));
+    }
+    @Test void personalizationChecksModerationPricesValidationAndReservedFunds() throws Exception {
+        var f=adminCycle();var personal=context.getBean(PersonalizationService.class);
+        personal.configure(f.owner,f.group,new Requests.PersonalizationPrices(BigDecimal.ZERO,BigDecimal.ZERO,BigDecimal.ZERO));
+        for(UUID user:List.of(f.owner,f.user,f.other))personal.buy(user,f.group,purchase(Requests.PersonalizationAction.TITLE,"Título 123","0"));
+        administration.setRole(f.owner,f.group,f.user,new Requests.MemberRole(Requests.Role.MODERATOR));
+        assertThrows(ApiError.class,()->personal.removeTitle(f.user,f.group,f.owner));
+        personal.removeTitle(f.user,f.group,f.other);money("100",service.wallet(f.other,f.group).availablePoints());
+        personal.buy(f.other,f.group,purchase(Requests.PersonalizationAction.TITLE,"Outro título","0"));
+        administration.setRole(f.owner,f.group,f.other,new Requests.MemberRole(Requests.Role.MODERATOR));
+        assertThrows(ApiError.class,()->personal.removeTitle(f.user,f.group,f.other));
+        personal.removeTitle(f.owner,f.group,f.other);
+        personal.removeTitle(f.user,f.group,f.user);money("100",service.wallet(f.user,f.group).availablePoints());
+        assertThrows(ApiError.class,()->personal.buy(f.user,f.group,purchase(Requests.PersonalizationAction.TITLE_COLOR,"#000000","0")));
+        for(String invalid:List.of("a".repeat(31),"Campeão 🏆","1️⃣","🇧🇷"))assertThrows(ApiError.class,()->personal.buy(f.user,f.group,purchase(Requests.PersonalizationAction.TITLE,invalid,"0")));
+        assertThrows(ApiError.class,()->personal.buy(f.user,f.group,purchase(Requests.PersonalizationAction.NAME_COLOR,"red","0")));
+        personal.configure(f.owner,f.group,new Requests.PersonalizationPrices(BigDecimal.TEN,new BigDecimal("20"),BigDecimal.ZERO));
+        assertThrows(ApiError.class,()->personal.buy(f.user,f.group,purchase(Requests.PersonalizationAction.TITLE,"Desatualizado","0")));
+        stake(f,f.user,0,"90");
+        assertThrows(ApiError.class,()->personal.buy(f.user,f.group,purchase(Requests.PersonalizationAction.TITLE,"Sem saldo","20")));
+        money("10",service.wallet(f.user,f.group).availablePoints());money("90",service.wallet(f.user,f.group).reservedPoints());
+        assertNull(personal.state(f.user,f.group).style().title());
+        assertEquals(400,request("POST","/api/groups/"+f.group+"/personalization/prices",f.ownerSubject,"{\"nameColor\":-1,\"title\":0,\"titleColor\":0}").statusCode());
+        administration.leave(f.other,f.group);assertThrows(ApiError.class,()->personal.state(f.other,f.group));
+    }
+    @Test void concurrentPersonalizationPurchasesCannotSpendSamePointsTwice() throws Exception {
+        var f=adminCycle();var personal=context.getBean(PersonalizationService.class);
+        personal.configure(f.owner,f.group,new Requests.PersonalizationPrices(BigDecimal.ZERO,new BigDecimal("80"),BigDecimal.ZERO));
+        var executor=Executors.newFixedThreadPool(2);
+        try {
+            var start=new CountDownLatch(1);
+            Callable<Boolean> buy=()->{start.await();try{personal.buy(f.user,f.group,purchase(Requests.PersonalizationAction.TITLE,Thread.currentThread().getName(),"80"));return true;}catch(ApiError error){return false;}};
+            var first=executor.submit(buy);var second=executor.submit(buy);start.countDown();
+            assertNotEquals(first.get(30,TimeUnit.SECONDS),second.get(30,TimeUnit.SECONDS));
+            money("20",service.wallet(f.user,f.group).availablePoints());
+        } finally {executor.shutdownNow();}
+    }
 
     Cycle adminCycle() throws Exception {
         String owner=UUID.randomUUID().toString(),user=UUID.randomUUID().toString(),other=UUID.randomUUID().toString();

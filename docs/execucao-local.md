@@ -1,11 +1,13 @@
 # Iniciar os serviços locais
 
-Com o `.venv`, o `.env`, o JDK e as migrações até V009 já preparados, abra um
+Com o `.venv`, o `.env`, o JDK e as migrações até V011 já preparados, abra um
 PowerShell na raiz do projeto e execute:
 
 ```powershell
 .\iniciar.cmd
 ```
+
+As cores e títulos por pontos exigem a [migração V011](personalizacao.md#ativar).
 
 O comando usa o Python do `.venv` para iniciar os scripts existentes:
 

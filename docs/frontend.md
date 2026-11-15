@@ -123,13 +123,60 @@ O proxy continua acessando os backends da máquina anfitriã.
 Os detalhes da proposta incluem estado e critério de verificação. A listagem de
 apostas exige participação atual. Grupos privados não aparecem na exploração.
 
-## Limites
+## Apostas, ranking e estados vazios (RF-41 a RF-43)
+
+Os cartões do grupo e do Feed destacam a pergunta e diferenciam seis situações
+com rótulos e cores suaves. As barras usam quantidades de palpites por opção,
+com contagem e percentuais em texto; não representam pontos ou probabilidades.
+Uma aposta sem palpites usa uma barra neutra. Carregamento e indisponibilidade
+têm mensagens próprias, sem representar falha como zero participantes.
+
+O ranking permanece ordenado pelo servidor, conforme RF-20. Os três primeiros
+recebem marcadores e fundos distintos, preservando as cores de nome e título.
+A mensagem pessoal mostra posição, liderança, empate ou diferença de saldo
+disponível para o integrante imediatamente acima. O cálculo da diferença usa
+aritmética decimal exata, inclusive para valores fracionários. Igualar o saldo
+não modifica o desempate por criação da conta.
+
+Grupos, apostas, Feed, chats e ranking usam pequenos desenhos SVG e orientação
+contextual nos estados vazios. As ações abrem os fluxos existentes de criação,
+publicação, convite e escrita, ou limpam filtros. O convite só é oferecido
+quando a configuração atual permite convidar. Falhas apresentam uma ação de
+nova tentativa e não são anunciadas como ausência de conteúdo.
+
+O Flask oferece `GET /api/groups/{id}/participation`, autorizado por participação
+atual no grupo. Uma consulta à view `bet_odds` reúne os agregados de todas as
+apostas daquele grupo, sem retornar escolhas, valores ou identidades individuais.
+O proxy local encaminha essa rota apenas ao reader, preservando o Bearer token.
+Grupo e Feed atualizam dados a cada cinco segundos enquanto a aba está visível.
+Os cartões encerrados identificam a participação como encerrada. A consulta de
+odds do detalhe mantém seu mecanismo existente de atualização.
+
+Essas melhorias não exigem migração adicional. Para as personalizações já
+existentes de nome e título, continua necessária a V011. Reinicie o reader e
+o frontend e recarregue o navegador para disponibilizar a nova rota e os assets.
+
+Validação em 15/11/2026: 42 testes Python, 19 testes JavaScript e 7 testes de
+navegador aprovados. A integração do reader com PostgreSQL real também passou
+em schema temporário, incluindo acesso permitido ao integrante, rejeição de
+terceiros e de quem saiu, contagens agregadas e ausência de dados individuais.
+
+## Limites atuais
+
+O design aprovado é a única aparência da aplicação. Sombras, fundos,
+tipografia, mensagens, controles e textos estão integrados à interface e à
+folha de estilos principal. Veja [design da interface](acabamento-visual.md).
+
+O menu compacto fica à esquerda e os contatos à direita em telas maiores.
+No celular, os amigos ficam no menu para preservar o espaço de leitura.
+Veja [layout lateral](layout-lateral.md).
 
 A administração de grupos, convites, saída/remoção e crédito diário estão em
 [administracao.md](administracao.md). Resultado, contestação, cancelamento e
 pagamento estão em [resultados.md](resultados.md). A interface continua sendo um
-protótipo temporário. Pontos são exclusivamente virtuais; prêmios internos
-permanecem em aberto.
+protótipo temporário. Pontos são exclusivamente virtuais. Cores e títulos por
+pontos estão em [personalização](personalizacao.md), com ativação pela V011;
+outros tipos de prêmio permanecem em aberto.
 
 ## Testes
 

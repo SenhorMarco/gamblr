@@ -60,7 +60,7 @@ def create_app(overrides=None):
     def database_error(error):
         app.logger.error("Falha na consulta PostgreSQL (%s)", type(error).__name__)
         # Nao imprime excecao original, SQL, parametros ou credenciais.
-        return jsonify(code="DATABASE_UNAVAILABLE", message="Consulta indisponivel. Confira a conexao e a migracao V006."), 503
+        return jsonify(code="DATABASE_UNAVAILABLE", message="Consulta indisponivel. Confira a conexao e as migracoes ate V011."), 503
 
     @app.errorhandler(OSError)
     def transport_error(error):
@@ -153,10 +153,22 @@ def create_app(overrides=None):
     @authenticated
     def ranking(group_id):
         member(group_id)
-        rows = query(f"SELECT user_id,display_name,available_points,position FROM {schema_sql}.group_ranking WHERE group_id=%s ORDER BY position", (group_id,))
+        rows = query(f"SELECT user_id,display_name,available_points,position,name_color,title,title_color FROM {schema_sql}.group_ranking WHERE group_id=%s ORDER BY position", (group_id,))
         return jsonify(groupId=str(group_id), ranking=[{
-            "userId": str(row[0]), "displayName": row[1], "availablePoints": format(row[2], "f"), "position": int(row[3])
+            "userId": str(row[0]), "displayName": row[1], "availablePoints": format(row[2], "f"), "position": int(row[3]),
+            "nameColor": row[4], "title": row[5], "titleColor": row[6]
         } for row in rows])
+
+    @app.get("/api/groups/<uuid:group_id>/participation")
+    @authenticated
+    def participation(group_id):
+        member(group_id)
+        rows = query(f"SELECT bet_id,option_id,label,position,votes,total_votes FROM {schema_sql}.bet_odds WHERE group_id=%s ORDER BY bet_id,position", (group_id,))
+        bets = {}
+        for bet_id, option_id, label, position, votes, total in rows:
+            bet = bets.setdefault(str(bet_id), {"betId": str(bet_id), "totalVotes": int(total), "options": []})
+            bet["options"].append({"optionId": str(option_id), "label": label, "position": int(position), "votes": int(votes)})
+        return jsonify(groupId=str(group_id), bets=list(bets.values()))
 
     @app.get("/api/bets/<uuid:bet_id>/odds")
     @authenticated
@@ -193,7 +205,7 @@ def create_app(overrides=None):
     def check_database():
         with app.app_context():
             query(f"SELECT group_id,user_id,issuer,subject FROM {schema_sql}.current_group_members LIMIT 0")
-            query(f"SELECT user_id,available_points,position FROM {schema_sql}.group_ranking LIMIT 0")
+            query(f"SELECT user_id,available_points,position,name_color,title,title_color FROM {schema_sql}.group_ranking LIMIT 0")
             query(f"SELECT option_id,votes,decimal_odds FROM {schema_sql}.bet_odds LIMIT 0")
     app.extensions["check_database"] = check_database
     return app

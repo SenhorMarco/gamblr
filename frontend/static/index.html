@@ -14,7 +14,7 @@
         <div class="welcome-network" aria-hidden="true"><span>g</span><i></i><span>g</span><i></i><span>g</span></div>
         <ul class="welcome-list"><li><b>Seus grupos</b><span>Um espaço para cada turma.</span></li><li><b>Suas apostas</b><span>Uma escolha, um palpite definitivo.</span></li><li><b>Seu placar</b><span>Pontos e odds atualizados para o grupo.</span></li></ul>
       </div>
-      <div class="auth-panel"><div class="auth-box"><span class="prototype-tag">PROTÓTIPO LOCAL</span><h2 id="auth-title">Entre na conversa.</h2><p class="muted" id="auth-description">Acesse sua conta para acompanhar seus grupos.</p>
+      <div class="auth-panel"><div class="auth-box"><span class="prototype-tag">PROTÓTIPO LOCAL</span><h2 id="auth-title">Entre na conversa.</h2><p class="muted" id="auth-description">Entre para ver as conversas e os palpites da sua turma.</p>
         <div class="segmented" aria-label="Acesso à conta"><button id="login-tab" type="button" class="active">Entrar</button><button id="signup-tab" type="button">Criar conta</button></div>
         <form id="auth-form">
           <label id="name-label" hidden>Seu nome<input id="auth-name" autocomplete="nickname" placeholder="Como o grupo te conhece"></label>
@@ -50,7 +50,7 @@
 
       <main class="workspace">
         <div id="service-notice" class="notice" role="status" hidden></div>
-        <header class="topbar"><div><span class="eyebrow" id="page-kicker">GRUPOS PÚBLICOS</span><h1 id="page-title">Encontre sua turma.</h1><p id="page-subtitle" class="muted">Entre em um grupo e coloque seus palpites em jogo.</p></div><div class="top-actions"><button id="refresh-button" class="button secondary" title="Atualizar dados" aria-label="Atualizar dados">↻</button><button id="new-group-button" class="button primary">＋ Criar grupo</button></div></header>
+        <header class="topbar"><div><span class="eyebrow" id="page-kicker">GRUPOS PÚBLICOS</span><h1 id="page-title">Encontre sua turma.</h1><p id="page-subtitle" class="muted">Encontre sua turma e entre na conversa.</p></div><div class="top-actions"><button id="refresh-button" class="button secondary" title="Atualizar dados" aria-label="Atualizar dados">↻</button><button id="new-group-button" class="button primary">＋ Criar grupo</button></div></header>
 
         <section id="feed-view" hidden aria-label="Feed de apostas"><div class="section-heading"><h2>Apostas mais recentes</h2></div><form id="feed-filters" class="feed-filters">
 <label>Situação<select id="feed-state"><option value="all">Todas</option><option value="active">Ativas</option><option value="open">Aceitando palpites</option><option value="awaiting">Aguardando resultado</option><option value="RESULT_PUBLISHED">Resultado publicado</option><option value="SETTLED">Concluídas</option><option value="CANCELLED">Canceladas</option></select></label>
@@ -86,9 +86,10 @@
           <div class="stats"><article class="stat"><span>DISPONÍVEIS</span><strong id="available-points">—</strong></article><article class="stat"><span>RESERVADOS</span><strong id="reserved-points">—</strong></article><article class="stat"><span>ABERTAS</span><strong id="open-bets">—</strong></article></div>
           <div class="bets-toolbar"><span>Palpites do grupo</span><select id="bet-filter" aria-label="Filtrar apostas"><option value="open">Ativas</option><option value="all">Todas</option><option value="mine">Meus palpites</option></select></div>
           <div id="bets-list" class="bets-list"></div><div id="bet-detail" class="bet-detail" hidden></div>
-          <details class="ranking-panel"><summary>Ranking do grupo <span class="live-label">Atualizado</span></summary><p class="muted small">Ordenado pelo saldo disponível.</p><ol id="ranking-list" class="ranking-list"></ol><p id="ranking-error" class="muted small" hidden></p><div class="ranking-foot">Os pontos reservados ficam fora do ranking.</div></details>
+          <details class="ranking-panel" open><summary>Ranking do grupo <span id="ranking-live-label" class="live-label">Carregando…</span></summary><p class="muted small">Ordenado pelo saldo disponível.</p><p id="ranking-summary" class="ranking-summary" role="status" hidden></p><ol id="ranking-list" class="ranking-list"></ol><div id="ranking-error" class="muted small" hidden></div><div class="ranking-foot">Os pontos reservados ficam fora do ranking. Igualar o saldo mantém o desempate pela criação da conta.</div></details>
         </section>
       </aside>
+      <aside id="contacts-column" class="contacts-column" aria-label="Amigos e conversas" hidden></aside>
     </div>
     <footer class="workspace-footer"><span>gamblr © protótipo</span><span>Pontos virtuais · Apuração automática após o prazo de contestação</span></footer>
   </div>

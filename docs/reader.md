@@ -4,6 +4,18 @@ O serviço `services/reader` oferece ranking e odds. Ele valida os tokens do
 Supabase Auth e usa somente a credencial `gamblr_reader`. O Spring continua
 responsável pelas escritas; o Flask consulta as views depois dos commits.
 
+Para as barras das listagens, `GET /api/groups/{id}/participation` retorna os
+agregados de todas as apostas do grupo em uma consulta. A resposta contém
+`groupId` e `bets`, com `betId`, `totalVotes` e `options` (`optionId`, `label`,
+`position`, `votes`). O serviço exige participação atual antes da consulta e
+usa o mesmo snapshot de leitura para autorização e agregados. Não retorna
+identidades, escolhas ou valores individuais. Os detalhes de interface estão
+em [frontend](frontend.md#apostas-ranking-e-estados-vazios-rf-41-a-rf-43).
+
+Na versão atual, aplique também V007–V011 antes de iniciar o serviço. A V011
+acrescenta `nameColor`, `title` e `titleColor` ao ranking, e a verificação de
+inicialização exige essas colunas. Veja [personalização](personalizacao.md#ativar).
+
 ## 1. Aplicar a V006
 
 Após V001–V005, execute o arquivo completo

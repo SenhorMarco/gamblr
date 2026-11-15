@@ -321,3 +321,209 @@ details:not(.ranking-panel) > summary { font-size: 11px; color: #677c9e; cursor:
 #feed-groups { display:flex; flex-wrap:wrap; gap:12px; }
 .feed-group-choice { display:inline-flex; align-items:center; gap:6px; }
 .feed-group-choice input { width:auto; }
+.group-person { overflow-wrap: anywhere; }
+.group-title { margin-left: .45em; font-size: .85em; font-weight: 500; }
+.rank-name.group-person { white-space: normal; }
+.message-heading .group-person { min-width: 0; flex: 1; }
+.personalization { border-bottom: 1px solid var(--line); margin-bottom: 1rem; padding-bottom: 1rem; }
+.personalization input[type=color] { min-height: 2.5rem; width: 100%; }
+
+/* Apostas: a pergunta e a participacao organizam a leitura de cada cartao. */
+.bet-card, .feed-bet-card { border-top: 3px solid var(--situation-accent, #9aaecb); }
+.bet-card h3.bet-question { font-size: 15px; font-weight: 700; line-height: 1.45; color: #2e467b; margin: 9px 0 12px; }
+.feed-bet-card h3.bet-question { font-size: 18px; line-height: 1.4; overflow-wrap: anywhere; margin: 12px 0; }
+.card-topline { flex-wrap: wrap; }
+.situation-open { --situation-accent: #7ca98a; }
+.situation-closed { --situation-accent: #c5ac70; }
+.situation-awaiting { --situation-accent: #c69a78; }
+.situation-published { --situation-accent: #a093bf; }
+.situation-settled { --situation-accent: #8ba8ca; }
+.situation-cancelled { --situation-accent: #a5aab2; }
+.bet-status { display: inline-block; font-weight: 600; border-radius: 4px; padding: 4px 6px; line-height: 1.35; }
+.status-open { background: #edf6ee; color: #3e6547; border-color: #d2e7d6; }
+.status-closed { background: #faf5e7; color: #75602d; border-color: #e8dfc4; }
+.status-awaiting { background: #fcf0e6; color: #845b36; border-color: #eedbcc; }
+.status-published { background: #f1edf8; color: #695188; border-color: #e0d7ee; }
+.status-settled { background: #eaf2fa; color: #496786; border-color: #d2dfec; }
+.status-cancelled { background: #f0f1f3; color: #626973; border-color: #dfe2e6; }
+.card-participation { margin: 10px 0 12px; font-size: 10px; line-height: 1.55; color: #536580; }
+.participation-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 10px; }
+.participation-heading > span:first-child { font-weight: 700; }
+.participation-heading > span:last-child { font-size: 9px; }
+.participation-bar { height: 10px; display: flex; overflow: hidden; border-radius: 5px; background: #e3e8f0; margin: 7px 0; }
+.participation-segment { flex-basis: 0; min-width: 0; }
+.participation-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.participation-option { overflow-wrap: anywhere; min-width: 0; }
+.participation-swatch { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.option-color-0 { background: #6688bb; }.option-color-1 { background: #73a28b; }
+.option-color-2 { background: #b092bf; }.option-color-3 { background: #c39a68; }
+.option-color-4 { background: #7d9fa9; }.option-color-5 { background: #bd8497; }
+.option-color-6 { background: #a0a363; }.option-color-7 { background: #888cac; }
+.participation-message { margin: 0; color: #68778d; font-size: 10px; }
+.feed-bet-card .card-participation { font-size: 11px; }
+.feed-bet-card > .button { margin-top: 8px; }
+
+.ranking-summary { padding: 11px; border: 1px solid #d9e3f2; border-radius: 5px; background: #f2f6fc; color: #3b5278; font-size: 12px; line-height: 1.6; }
+.rank-row.podium { border: 1px solid #e3e5ea; border-radius: 5px; padding: 10px 7px; margin: 5px 0; }
+.rank-row.podium-1 { background: #fff8e5; border-color: #eadeb7; }
+.rank-row.podium-2 { background: #f2f5fa; border-color: #dce2ed; }
+.rank-row.podium-3 { background: #fff1e9; border-color: #ecd9ca; }
+.podium .rank-position { border-radius: 50%; width: 26px; height: 26px; display: grid; place-items: center; flex-shrink: 0; font-weight: 700; color: #536580; background: #fff; }
+.podium-1 .rank-position { color: #86651c; background: #f6e7b8; }
+.podium-2 .rank-position { background: #e0e6f0; }
+.podium-3 .rank-position { color: #8a5d3e; background: #f3dccc; }
+.ranking-foot { line-height: 1.6; }
+.ranking-list > li:has(> .illustrated-empty) { list-style: none; }
+
+.illustrated-empty { display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 24px 15px; text-align: center; border-radius: 6px; }
+.empty-illustration { width: 56px; height: 56px; padding: 9px; border-radius: 16px; background: #eaf0f9; stroke: #7892ba; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.illustrated-empty .empty-title { font-size: 13px; line-height: 1.5; color: #52688d; }
+.illustrated-empty .empty-description { font-size: 11px; line-height: 1.7; color: #67778f; max-width: 36em; }
+.empty-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 4px; }
+.empty-actions .button { white-space: normal; }
+.public-grid > .illustrated-empty { grid-column: 1 / -1; }
+.chat-stream > .illustrated-empty { margin: auto; border: 0; }
+.load-failure { border-color: #ddcfbf; background: #fcf8f3; }
+@media (prefers-reduced-motion: reduce) { .odds-segment { transition: none; } }
+
+/* Acabamento visual aprovado. */
+html:root {
+  --surface-shadow: 0 2px 4px #30456c05, 0 8px 22px #30456c09;
+  --selected-shadow: 0 0 0 1px #8da8ce40, 0 6px 18px #3b599812;
+  background: #edf1f7;
+}
+html:root body {
+  background: linear-gradient(180deg, #f6f8fc 0, #eef2f8 450px, #edf0f5 100%);
+  min-height: 100svh;
+  color: #303b4c;
+}
+html:root .site-bar { box-shadow: 0 2px 8px #203b6824; }
+html:root :is(.chat-window,.public-card,.bet-detail,.auth-panel) {
+  border-radius: 8px;
+  box-shadow: var(--surface-shadow);
+}
+html:root .chat-window { overflow: hidden; }
+html:root .chat-heading { background: linear-gradient(180deg,#fafbfe,#f1f5fb); padding-block: 15px; }
+html:root .chat-history { background: #f1f5fb; }
+html:root .chat-stream { background: linear-gradient(180deg,#fbfcff,#f4f7fc); }
+html:root .chat-composer { background: linear-gradient(180deg,#f8faff,#f1f5fb); }
+html:root .topbar { border-bottom-color: #d9e1ee; padding-bottom: 19px; margin-bottom: 19px; }
+html:root .topbar h1 { font-size: 25px; font-weight: 600; letter-spacing: -.45px; line-height: 1.3; margin-block: 5px 7px; color: #2c3c56; }
+html:root .topbar p { font-size: 12px; line-height: 1.65; color: #6a7890; }
+html:root .eyebrow { font-size: 9px; font-weight: 600; letter-spacing: .07em; color: #75839a; }
+html:root :is(.chat-heading h2,.right-heading h2,.section-heading h2) { letter-spacing: -.15px; }
+html:root .bet-card { border-radius: 7px; padding: 14px; box-shadow: 0 2px 7px #30456c08; }
+html:root .bet-card.selected { padding-left: 12px; box-shadow: var(--selected-shadow); background: linear-gradient(135deg,#f8faff,#f0f5fd); }
+html:root :is(.bet-card h3.bet-question,.feed-bet-card h3.bet-question) { letter-spacing: -.2px; line-height: 1.5; margin-block: 10px 14px; }
+html:root .bet-card h3.bet-question { font-size: 16px; }
+html:root .feed-bet-card h3.bet-question { font-size: 19px; }
+html:root .card-foot { padding-top: 9px; border-top: 1px solid #e7ecf4; color: #6a7890; line-height: 1.6; }
+html:root .participation-heading { margin-bottom: 2px; }
+html:root .participation-legend { line-height: 1.7; }
+html:root .stats { border-radius: 7px; overflow: hidden; box-shadow: 0 2px 7px #30456c06; }
+html:root .stat { background: linear-gradient(180deg,#fff,#f5f8fd); padding-block: 13px; }
+html:root .stat strong { font-size: 24px; letter-spacing: -.5px; }
+html:root :is(.group-icon,.avatar,.nav-button,.group-nav) { border-radius: 5px; }
+html:root :is(.nav-button.active,.group-nav.active) { background: #dfe8f6; box-shadow: inset 3px 0 #6a87b8; }
+html:root .user-card .avatar { background: linear-gradient(145deg,#e8eef9,#d6e1f3); box-shadow: 0 2px 5px #30456c0a; }
+html:root :is(.ranking-summary,.rank-row.podium) { box-shadow: 0 2px 6px #30456c06; border-radius: 7px; }
+html:root .ranking-summary { font-size: 12px; line-height: 1.7; padding: 13px; }
+html:root .illustrated-empty { background: linear-gradient(145deg,#f9fbff,#f0f5fc); border-color: #d5e0f0; gap: 11px; }
+html:root .illustrated-empty .empty-title { font-size: 14px; letter-spacing: -.15px; }
+html:root .illustrated-empty .empty-description { font-size: 12px; line-height: 1.75; }
+html:root .empty-illustration { box-shadow: inset 0 1px #ffffffa0, 0 3px 8px #3b599809; }
+html:root .load-failure { background: linear-gradient(145deg,#fffcf8,#faf4ec); border-color: #ddcfbf; }
+
+/* Cada mensagem continua com seu autor, horario e botoes acessiveis. */
+html:root .chat-message { background: #fff; border-color: #e0e7f1; border-radius: 12px 12px 12px 4px; padding: 11px 13px; margin-bottom: 14px; box-shadow: 0 2px 5px #30456c07; }
+html:root .chat-message.own { background: #e8f0fc; border-color: #ceddf2; border-radius: 12px 12px 4px 12px; }
+html:root .chat-message.message-continuation { margin-top: -9px; border-top-left-radius: 5px; }
+html:root .chat-message.own.message-continuation { border-top-left-radius: 12px; border-top-right-radius: 5px; }
+html:root .message-heading { gap: 10px; }
+html:root .message-heading strong { font-weight: 600; line-height: 1.5; }
+html:root .message-heading time { font-size: 10px; color: #718098; }
+html:root .chat-message p { line-height: 1.7; margin-top: 6px; }
+html:root .delete-message { padding-top: 7px; }
+
+html:root :is(input,textarea,select,.button) { border-radius: 5px; }
+html:root :is(input,textarea,select) { border-color: #c7d2e3; background-color: #fff; box-shadow: inset 0 1px 2px #30456c03; }
+html:root :is(input,textarea,select):hover:not(:disabled) { border-color: #a8bad5; }
+html:root :is(input,textarea,select):focus { border-color: #7799c9; box-shadow: 0 0 0 3px #789bd51a; }
+html:root :is(button,a,input,textarea,select,summary):focus-visible { outline: 2px solid #6b8fc6; outline-offset: 3px; }
+html:root .button { padding: 7px 11px; box-shadow: 0 1px 2px #233d7410, inset 0 1px #ffffff40; }
+html:root .button.secondary { background: linear-gradient(#fff,#f3f6fb); color: #465977; border-color: #bbc9dd; }
+html:root .button.secondary:hover:not(:disabled) { background: #eaf0f9; border-color: #9fb3d0; }
+html:root .button.delete-bet { color: #8b4545; }
+html:root .button.primary:hover:not(:disabled) { background: #46649e; box-shadow: 0 2px 5px #233d7420; }
+html:root .button:active:not(:disabled) { box-shadow: inset 0 2px 3px #233d741c; }
+html:root .button:disabled { box-shadow: none; }
+html:root .header-search input { border-radius: 5px 0 0 5px; border-color: #1d4080; }
+html:root .header-search button { border-radius: 0 5px 5px 0; }
+html:root dialog { border-radius: 10px; box-shadow: 0 18px 60px #20355440, 0 3px 12px #20355415; }
+html:root dialog::backdrop { background: #23355066; backdrop-filter: blur(2px); }
+@media (max-width:560px) {
+  html:root .topbar h1 { font-size: 23px; }
+  html:root .chat-message { max-width: 95%; padding: 10px 11px; }
+  html:root .message-heading { flex-wrap: wrap; gap: 3px 9px; }
+  html:root .topbar { padding-bottom: 16px; margin-bottom: 16px; }
+}
+
+/* Layout lateral responsivo. */
+@media (min-width:821px) {
+  html:root #app-view > .site-bar .bar-inner {
+    max-width: none; padding-inline: 20px; gap: 24px;
+  }
+  html:root .site-shell {
+    max-width: none; margin: 0; padding: 18px 16px 0;
+    grid-template-columns: 180px minmax(0,1fr) 310px 200px;
+    gap: 18px; align-items: start;
+  }
+  html:root .sidebar {
+    grid-column: 1; grid-row: 1; position: sticky; top: 74px;
+    height: calc(100dvh - 90px); overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: thin; padding: 2px 6px 8px 0;
+    display: flex; flex-direction: column;
+  }
+  html:root .workspace { grid-column: 2; grid-row: 1; }
+  html:root .right-column {
+    grid-column: 3; grid-row: 1; border-left: 0; padding-left: 0;
+  }
+  html:root .contacts-column {
+    grid-column: 4; grid-row: 1; position: sticky; top: 74px;
+    height: calc(100dvh - 90px); overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: thin; border-left: 1px solid #d8dfea;
+    padding: 3px 0 12px 12px; min-width: 0;
+    background: linear-gradient(90deg,#e9edf430,transparent 30px);
+  }
+  html:root .sidebar > :is(.nav-button,.user-card,.sidebar-heading,.sidebar-footer) { flex-shrink: 0; }
+  html:root .sidebar .user-card { margin: 0 4px 15px; gap: 8px; }
+  html:root .sidebar .user-card .avatar { width: 30px; height: 30px; font-size: 15px; }
+  html:root .sidebar :is(.nav-button,.group-nav) {
+    padding: 5px 7px; min-height: 30px; gap: 7px; font-size: 12px; border-radius: 3px;
+  }
+  html:root .sidebar :is(.nav-button.active,.group-nav.active) {
+    background: #e0e6f0; box-shadow: inset 0 0 0 1px #d6deeb;
+  }
+  html:root .sidebar .group-icon { width: 20px; height: 20px; font-size: 10px; border-radius: 3px; }
+  html:root .sidebar .sidebar-heading { margin: 21px 7px 7px; color: #7b8799; font-size: 10px; letter-spacing: .02em; }
+  html:root .sidebar .sidebar-footer { margin: auto 7px 0; padding-top: 14px; }
+  html:root .sidebar .sidebar-empty { margin-block: 8px; padding-inline: 7px; }
+  html:root .contacts-column .friends-heading { margin: 0 5px 13px; color: #69788e; font-size: 11px; letter-spacing: .02em; }
+  html:root .contacts-column .friend-nav { padding: 6px 5px; gap: 9px; min-height: 39px; color: #495a74; font-size: 12px; border-radius: 4px; }
+  html:root .contacts-column .friend-nav .avatar { width: 28px; height: 28px; font-size: 12px; border-radius: 50%; background: #dfe7f4; }
+  html:root .contacts-column .friend-nav.active { background: #dfe7f4; box-shadow: inset 2px 0 #6a87b8; }
+  html:root .contacts-column .friend-request { padding: 10px 6px; background: #ffffff50; margin-bottom: 8px; border-radius: 5px; }
+  html:root .contacts-column .sidebar-empty { padding-inline: 5px; line-height: 1.75; }
+  html:root .contacts-column #private-nav { margin-top: 16px; padding: 12px 5px 6px; border-top: 1px solid #d8dfea; font-size: 11px; }
+  html:root .workspace-footer { max-width: none; margin: 24px 16px 0; }
+}
+@media (min-width:1101px) and (max-width:1279px) {
+  html:root .site-shell { grid-template-columns: 160px minmax(0,1fr) 280px 180px; gap: 14px; padding-inline: 14px; }
+}
+@media (min-width:821px) and (max-width:1100px) {
+  html:root .site-shell { grid-template-columns: 150px minmax(0,1fr) 170px; gap: 14px; padding-inline: 14px; }
+  html:root .sidebar { grid-row: 1 / span 2; }
+  html:root .right-column { grid-column: 2; grid-row: 2; }
+  html:root .contacts-column { grid-column: 3; grid-row: 1 / span 2; }
+  html:root #app-view > .site-bar .bar-inner { padding-inline: 14px; }
+}

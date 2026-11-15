@@ -139,4 +139,5 @@ Com o frontend aberto, na pasta `frontend`:
 
 Crédito diário, convites e administração de membros foram acrescentados pela
 V009, conforme [administracao.md](administracao.md). A arquitetura definitiva do
-frontend e os prêmios internos permanecem em aberto.
+frontend permanece em aberto. Cores e títulos por pontos são acrescentados pela
+V011, conforme [personalização](personalizacao.md); outros prêmios permanecem em aberto.

@@ -10,7 +10,10 @@ from dotenv import dotenv_values
 root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("task", choices=["build", "test", "integration", "bootRun"])
+parser.add_argument("--tests", action="append", help="Filtro de classe/metodo para integration; pode ser repetido")
 args = parser.parse_args()
+if args.tests and args.task != "integration":
+    parser.error("--tests exige a tarefa integration")
 env = os.environ.copy()
 env["GRADLE_USER_HOME"] = str(root / ".tools/gradle")
 if args.task in {"bootRun", "integration"}:
@@ -39,5 +42,7 @@ if args.task in {"bootRun", "integration"}:
 command = [str(root / "services/writer" / ("gradlew.bat" if os.name == "nt" else "gradlew")),
            "--no-daemon", "--console=plain", "test" if args.task == "integration" else args.task]
 if args.task == "integration":
-    command += ["--tests", "*WriterIntegrationTest", "--rerun-tasks"]
+    for pattern in args.tests or ["*WriterIntegrationTest"]:
+        command += ["--tests", pattern]
+    command += ["--rerun-tasks"]
 raise SystemExit(subprocess.run(command, cwd=root / "services/writer", env=env).returncode)

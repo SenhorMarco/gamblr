@@ -1,3 +1,6 @@
+import {groupName} from './personalization.js';
+import {emptyState} from './presentation.js';
+import {continuesMessage} from './message-layout.js';
 // Conversas e amizades usam somente as APIs autenticadas do Spring.
 export function createChats({api,profile,onPrivate,onBet}) {
   const $=id=>document.getElementById(id);
@@ -49,10 +52,11 @@ export function createChats({api,profile,onPrivate,onBet}) {
       const key=JSON.stringify(page);
       if(key!==current.key) {
         const thread=$(prefix+'-thread'),bottom=thread.scrollHeight-thread.scrollTop-thread.clientHeight<60||!current.key;const fragment=document.createDocumentFragment();
-        for(const message of page.messages) {
+        for(const [messageIndex,message] of page.messages.entries()) {
           const row=node('article','chat-message'+(message.authorId===profile()?.id?' own':''));row.dataset.message=message.id;
+          if(continuesMessage(page.messages[messageIndex-1],message))row.classList.add('message-continuation');
           const heading=node('div','message-heading'),time=node('time','',new Date(message.sentAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));time.dateTime=message.sentAt;
-          heading.append(node('strong','',message.displayName),time);row.append(heading,node('p',message.deleted?'deleted-message':'',message.deleted?'Mensagem apagada pela moderação.':message.body));
+          heading.append(current.kind==='group'?groupName(message,{tag:'strong'}):node('strong','',message.displayName),time);row.append(heading,node('p',message.deleted?'deleted-message':'',message.deleted?'Mensagem apagada pela moderação.':message.body));
           if(message.betId&&!message.deleted&&onBet){const button=node('button','button secondary','Ver aposta');button.type='button';button.onclick=()=>onBet(message.betId);row.append(button);}
           if(current.kind==='group'&&page.canModerate&&!message.deleted) {
             const remove=node('button','delete-message','Apagar');remove.type='button';remove.setAttribute('aria-label',`Apagar mensagem de ${message.displayName}`);
@@ -60,14 +64,14 @@ export function createChats({api,profile,onPrivate,onBet}) {
           }
           fragment.append(row);
         }
-        if(!page.messages.length)fragment.append(node('p','chat-status',current.kind==='group'?'Nenhuma mensagem desde sua entrada. Comece a conversa!':'Nenhuma mensagem ainda. Diga olá!'));
+        if(!page.messages.length)fragment.append(emptyState({kind:'chat',title:before?'Nenhuma mensagem nesta página.':current.kind==='group'?'Nenhuma mensagem desde sua entrada.':'Nenhuma mensagem ainda. Diga olá!',description:before?'Volte para acompanhar as mensagens recentes.':current.kind==='group'?'Seu histórico começa na sua entrada. Que tal puxar um assunto?':'Pode começar com um olá. Esta conversa é só de vocês.',actions:[{label:before?'Voltar às recentes':'Escrever mensagem',run:()=>{if(before){current.before=null;current.key='';refresh();}else $(prefix+'-message').focus();}}]}));
         thread.replaceChildren(fragment);if(bottom)thread.scrollTop=thread.scrollHeight;current.key=key;
       }
       $(prefix+'-message').disabled=false;$(prefix+'-send').disabled=!!current.sending;
       visible(prefix+'-older',!!page.nextBefore);visible(prefix+'-latest',!!current.before);
       if(!current.sending&&!current.sendError)visible(prefix+'-error',false);
     } catch(error) {
-      if(scope===current){chatError(prefix,error);if(error.status===403){$(prefix+'-message').disabled=true;$(prefix+'-send').disabled=true;$(prefix+'-thread').replaceChildren(node('p','chat-status','Você não tem acesso a esta conversa.'));current.key='';}}
+      if(scope===current){chatError(prefix,error);if(error.status===403){$(prefix+'-message').disabled=true;$(prefix+'-send').disabled=true;$(prefix+'-thread').replaceChildren(emptyState({kind:'chat',title:'Conversa indisponível.',description:'Você não tem acesso a esta conversa.'}));current.key='';}else if(!current.key){const panel=emptyState({kind:'chat',title:'Não foi possível carregar as mensagens.',description:'A conversa está indisponível no momento.',actions:[{label:'Tentar novamente',run:()=>refresh()}]});panel.classList.add('load-failure');$(prefix+'-thread').replaceChildren(panel);}}
     } finally {current.loading=false;}
   }
   function chatError(prefix,error) {$(prefix+'-error').textContent=error.message;visible(prefix+'-error',true);}
@@ -107,7 +111,7 @@ export function createChats({api,profile,onPrivate,onBet}) {
     start(){active=true;epoch++;refreshFriends();},
     reset(){active=false;epoch++;scope=null;friends=[];friendsLoading=false;sidebar();for(const prefix of ['group','private']){$(prefix+'-thread').replaceChildren();$(prefix+'-message').value='';$(prefix+'-message').disabled=true;$(prefix+'-send').disabled=true;}},
     openGroup(group){open('group',group.id);},
-    openPrivate(friend){if(friend){$('private-chat-heading').textContent=friend.displayName;open('private',friend.userId);}else{pause();$('private-chat-heading').textContent='Mensagens privadas';$('private-thread').replaceChildren(node('p','chat-status','Selecione um amigo à esquerda. O chat fica disponível após o aceite da amizade.'));$('private-message').disabled=true;$('private-send').disabled=true;visible('private-error',false);visible('private-older',false);visible('private-latest',false);}},
+    openPrivate(friend){if(friend){$('private-chat-heading').textContent=friend.displayName;open('private',friend.userId);}else{pause();$('private-chat-heading').textContent='Mensagens privadas';$('private-thread').replaceChildren(emptyState({kind:'chat',title:'Uma conversa começa com um olá.',description:'Selecione um amigo à esquerda. O chat fica disponível após o aceite da amizade.',actions:[{label:'Encontrar pessoas',run:()=>$('add-friend').click()}]}));$('private-message').disabled=true;$('private-send').disabled=true;visible('private-error',false);visible('private-older',false);visible('private-latest',false);}},
     pause,refresh,
   };
 }

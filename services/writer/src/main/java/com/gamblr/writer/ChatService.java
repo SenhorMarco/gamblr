@@ -15,7 +15,7 @@ public class ChatService {
     ChatService(JdbcTemplate jdbc,GroupLock locks) { this.jdbc=jdbc;this.locks=locks; }
     record Person(UUID id, String displayName) {}
     record Friendship(UUID id, UUID userId, String displayName, String status, boolean incoming) {}
-    record Message(long id, UUID authorId, String displayName, String body, Instant sentAt, boolean deleted,UUID betId) {}
+    record Message(long id, UUID authorId, String displayName, String body, Instant sentAt, boolean deleted,UUID betId,String nameColor,String title,String titleColor) {}
     record Page(List<Message> messages, Long nextBefore, boolean canModerate) {}
     private record Membership(Instant joinedAt, boolean moderate) {}
 
@@ -74,7 +74,7 @@ public class ChatService {
         return rows.getFirst();
     }
     private Message message(ResultSet rs,int row) throws SQLException {
-        return new Message(rs.getLong("id"),rs.getObject("author_id",UUID.class),rs.getString("display_name"),rs.getString("body"),rs.getTimestamp("sent_at").toInstant(),rs.getBoolean("deleted"),rs.getObject("bet_id",UUID.class));
+        return new Message(rs.getLong("id"),rs.getObject("author_id",UUID.class),rs.getString("display_name"),rs.getString("body"),rs.getTimestamp("sent_at").toInstant(),rs.getBoolean("deleted"),rs.getObject("bet_id",UUID.class),rs.getString("name_color"),rs.getString("title"),rs.getString("title_color"));
     }
     private Page page(List<Message> messages,boolean moderate) {
         boolean more=messages.size()>100;
@@ -90,15 +90,16 @@ public class ChatService {
     public Page groupMessages(UUID user,UUID group,Long before) {
         var membership=member(user,group);
         return page(jdbc.query("""
-            SELECT m.id,m.author_id,u.display_name,CASE WHEN m.deleted_at IS NULL THEN m.body END AS body,m.sent_at,m.deleted_at IS NOT NULL AS deleted,m.bet_id
+            SELECT m.id,m.author_id,u.display_name,CASE WHEN m.deleted_at IS NULL THEN m.body END AS body,m.sent_at,m.deleted_at IS NOT NULL AS deleted,m.bet_id,p.name_color,p.title,p.title_color
             FROM group_messages m JOIN app_users u ON u.id=m.author_id
+            JOIN memberships p ON p.group_id=m.group_id AND p.user_id=m.author_id
             WHERE m.group_id=? AND m.sent_at>=? AND m.id<? ORDER BY m.id DESC LIMIT 101
             """,this::message,group,java.sql.Timestamp.from(membership.joinedAt()),before(before)),membership.moderate());
     }
     @Transactional
     public Page privateMessages(UUID user,UUID other,Long before) {
         UUID friendship=friendship(user,other);
-        return page(jdbc.query("SELECT m.id,m.author_id,u.display_name,m.body,m.sent_at,false AS deleted,NULL::uuid AS bet_id FROM private_messages m JOIN app_users u ON u.id=m.author_id WHERE m.friendship_id=? AND m.id<? ORDER BY m.id DESC LIMIT 101",this::message,friendship,before(before)),false);
+        return page(jdbc.query("SELECT m.id,m.author_id,u.display_name,m.body,m.sent_at,false AS deleted,NULL::uuid AS bet_id,NULL::text AS name_color,NULL::text AS title,NULL::text AS title_color FROM private_messages m JOIN app_users u ON u.id=m.author_id WHERE m.friendship_id=? AND m.id<? ORDER BY m.id DESC LIMIT 101",this::message,friendship,before(before)),false);
     }
     private String body(Requests.Message request) {
         String body=request.body().strip();

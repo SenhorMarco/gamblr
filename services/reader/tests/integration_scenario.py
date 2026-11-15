@@ -38,13 +38,22 @@ assert rows[0]["userId"] == users["author"]
 assert rows[0]["availablePoints"] == "100"
 assert rows[1]["userId"] == users["ana"]
 assert rows[1]["availablePoints"] == "90"
+assert get(f"/api/groups/{group}/participation").status_code == 401
+assert get(f"/api/groups/{group}/participation", "outsider").status_code == 403
+participation = get(f"/api/groups/{group}/participation", "author")
+assert participation.status_code == 200, participation.get_json()
+summary = participation.get_json()["bets"]
+assert len(summary) == 1 and summary[0]["betId"] == bet
+assert summary[0]["totalVotes"] == 5
+assert [option["votes"] for option in summary[0]["options"]] == [2,3,0]
+assert set(summary[0]["options"][0]) == {"optionId", "label", "position", "votes"}
 assert [row["userId"] for row in rows[3:]] == [users[name] for name in ("bruno", "loser2", "loser3")]
 odds = get(f"/api/bets/{bet}/odds", "author")
 assert odds.status_code == 200, odds.get_json()
 data = odds.get_json()
 assert data["totalVotes"] == 5
 assert [option["votes"] for option in data["options"]] == [2,3,0]
-assert [option["decimalOdds"] for option in data["options"]] == ["2.50","1.67",None]
+assert [option["decimalOdds"] for option in data["options"]] == ["3.00","1.50",None]
 assert set(data["options"][0]) == {"optionId", "label", "position", "votes", "decimalOdds"}
 assert "userId" not in data["options"][0] and "points" not in data["options"][0]
 
@@ -73,6 +82,7 @@ try:
 finally:
     migrator.close()
 assert get(f"/api/groups/{group}/ranking", "ana").status_code == 403
+assert get(f"/api/groups/{group}/participation", "ana").status_code == 403
 assert get(f"/api/bets/{bet}/odds", "ana").status_code == 403
 assert len(get(f"/api/groups/{group}/ranking", "author").get_json()["ranking"]) == 5
 assert get(f"/api/bets/{bet}/odds", "author").get_json()["totalVotes"] == 5

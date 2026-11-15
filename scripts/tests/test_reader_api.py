@@ -29,9 +29,11 @@ class FakeCursor:
         elif ".group_ranking" in sql:
             if self.db.error:
                 raise self.db.error
-            self.rows = [(uuid4(), "Ana", Decimal("70"), 1)]
+            self.rows = [(uuid4(), "Ana", Decimal("70"), 1, "#123456", "Campeã", "#abcdef")]
         elif ".bet_odds" in sql:
-            self.rows = self.db.odds
+            if self.db.error:
+                raise self.db.error
+            self.rows = self.db.participation if sql.startswith("SELECT bet_id,") else self.db.odds
     def fetchone(self):
         return self.rows[0]
     def fetchall(self):
@@ -46,6 +48,7 @@ class FakeDatabase:
         self.role = "gamblr_reader"
         self.member = True
         self.error = None
+        self.participation = []
         self.rolled_back = self.closed = False
         self.odds = [(group,uuid4(),"Sim",0,2,5,Decimal("2.5")),
                      (group,uuid4(),"Não",1,3,5,Decimal("1.666666666667")),
@@ -108,10 +111,44 @@ class ReaderApiTests(unittest.TestCase):
         self.assertEqual(401,response.status_code)
         self.connect.assert_not_called()
 
+    def test_group_participation_batches_options_without_private_predictions(self):
+        second = uuid4()
+        self.db.participation = [(self.bet,uuid4(),'Sim',0,3,4),(self.bet,uuid4(),'Não',1,1,4),(second,uuid4(),'Outra',0,0,0)]
+        response = self.get(f'/api/groups/{self.group}/participation')
+        self.assertEqual(200,response.status_code)
+        self.assertEqual(str(self.group),response.json['groupId'])
+        self.assertEqual(2,len(response.json['bets']))
+        self.assertEqual([3,1],[option['votes'] for option in response.json['bets'][0]['options']])
+        self.assertEqual(0,response.json['bets'][1]['totalVotes'])
+        self.assertEqual({'optionId','label','position','votes'},set(response.json['bets'][0]['options'][0]))
+        queries=[(sql,params) for sql,params in self.db.queries if '.bet_odds' in sql]
+        self.assertEqual(1,len(queries))
+        self.assertEqual((self.group,),queries[0][1])
+        self.assertIn('REPEATABLE READ, READ ONLY',self.db.queries[0][0])
+
+    def test_group_participation_requires_current_membership_before_reading_aggregates(self):
+        self.assertEqual(401,self.client.get(f'/api/groups/{self.group}/participation').status_code)
+        self.connect.assert_not_called()
+        self.db.member=False
+        self.assertEqual(403,self.get(f'/api/groups/{self.group}/participation').status_code)
+        self.assertFalse(any('.bet_odds' in sql for sql,_ in self.db.queries))
+
+    def test_group_participation_distinguishes_no_bets_from_database_failure(self):
+        response=self.get(f'/api/groups/{self.group}/participation')
+        self.assertEqual([],response.json['bets'])
+        self.db.error=pg8000.dbapi.InterfaceError('sensitive-value')
+        with self.assertLogs(self.app.logger,level='ERROR'):
+            response=self.get(f'/api/groups/{self.group}/participation')
+        self.assertEqual(503,response.status_code)
+        self.assertNotIn('sensitive-value',response.get_data(as_text=True))
+
     def test_ranking_uses_read_only_snapshot_and_cleans_up(self):
         response = self.get(f"/api/groups/{self.group}/ranking")
         self.assertEqual(200,response.status_code)
         self.assertEqual("70",response.json["ranking"][0]["availablePoints"])
+        self.assertEqual("Campeã",response.json["ranking"][0]["title"])
+        self.assertEqual("#123456",response.json["ranking"][0]["nameColor"])
+        self.assertEqual("#abcdef",response.json["ranking"][0]["titleColor"])
         self.assertEqual("no-store",response.headers["Cache-Control"])
         self.assertIn("REPEATABLE READ, READ ONLY",self.db.queries[0][0])
         member_parameters = next(parameters for sql,parameters in self.db.queries if ".current_group_members" in sql)

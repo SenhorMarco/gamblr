@@ -1,3 +1,4 @@
+import {groupName,personalizationForms} from './personalization.js';
 export function createGroupTools({api,profile,currentGroup,onChange}) {
   const $=id=>document.getElementById(id);
   const node=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
@@ -6,8 +7,8 @@ export function createGroupTools({api,profile,currentGroup,onChange}) {
   async function mutate(path,body,{leave=false}={}) {
     const session=epoch,group=currentGroup();if(!group)return;
     $('manage-error').hidden=true;
-    try{await api('writer',path,{method:'POST',...(body===undefined?{}:{body})});if(session!==epoch)return;if(leave)$('manage-dialog').close();await onChange(leave?null:group.id);if(!leave&&$('manage-dialog').open)await load();}
-    catch(problem){if(session===epoch)error(problem.message);}
+    try{await api('writer',path,{method:'POST',...(body===undefined?{}:{body})});if(session!==epoch)return false;if(leave)$('manage-dialog').close();await onChange(leave?null:group.id);if(!leave&&$('manage-dialog').open)await load();return true;}
+    catch(problem){if(session===epoch)error(problem.message);return false;}
   }
   function action(label,callback,cls='secondary') {const button=node('button','button '+cls,label);button.type='button';button.onclick=async()=>{button.disabled=true;try{await callback();}finally{button.disabled=false;}};return button;}
   function field(form,name,label,value,type='text') {
@@ -34,14 +35,17 @@ export function createGroupTools({api,profile,currentGroup,onChange}) {
     const group=currentGroup();if(!group)return;const session=epoch,token={groupId:group.id};scope=token;$('manage-error').hidden=true;
     $('manage-role').textContent='Carregando administração…';$('manage-settings').replaceChildren();$('manage-members').replaceChildren();$('manage-requests').replaceChildren();$('manage-invite').hidden=true;
     try {
-      const [settings,members]=await Promise.all([api('writer',`/api/groups/${group.id}/settings`),api('writer',`/api/groups/${group.id}/members`)]);
+      const [settings,members,personalization]=await Promise.all([api('writer',`/api/groups/${group.id}/settings`),api('writer',`/api/groups/${group.id}/members`),api('writer',`/api/groups/${group.id}/personalization`).then(value=>({value})).catch(error=>({error}))]);
       if(session!==epoch||scope!==token||currentGroup()?.id!==group.id)return;
       $('manage-title').textContent=settings.name;$('manage-role').textContent={OWNER:'Você é dono do grupo',MODERATOR:'Você é moderador',MEMBER:'Você é integrante'}[settings.myRole];
       $('manage-settings').replaceChildren();if(settings.myRole==='OWNER')$('manage-settings').append(settingsForm(settings));
+      if(personalization.value)$('manage-settings').prepend(personalizationForms({state:personalization.value,displayName:profile().displayName,owner:settings.myRole==='OWNER',buy:request=>mutate(`/api/groups/${group.id}/personalization/purchases`,request),configure:prices=>mutate(`/api/groups/${group.id}/personalization/prices`,prices),remove:()=>mutate(`/api/groups/${group.id}/members/${profile().id}/title/remove`)}));
+      else $('manage-settings').append(node('p','form-error','Personalizações indisponíveis. Confira se a migração V011 foi aplicada e atualize a administração.'));
       const rows=document.createDocumentFragment();
       for(const member of members) {
-        const row=node('div','member-row'),info=node('div');info.append(node('strong','',member.displayName),node('small','',{OWNER:'Dono',MODERATOR:'Moderador',MEMBER:'Integrante'}[member.role]));row.append(info);
+        const row=node('div','member-row'),info=node('div');info.append(groupName(member,{tag:'strong'}),node('small','',{OWNER:'Dono',MODERATOR:'Moderador',MEMBER:'Integrante'}[member.role]));row.append(info);
         const buttons=node('div','member-actions');
+        if(member.title&&(member.userId===profile()?.id||settings.myRole==='OWNER'||settings.myRole==='MODERATOR'&&member.role==='MEMBER'))buttons.append(action('Remover título sem reembolso',()=>mutate(`/api/groups/${group.id}/members/${member.userId}/title/remove`)));
         if(settings.myRole==='OWNER'&&member.role!=='OWNER') {
           buttons.append(action(member.role==='MODERATOR'?'Destituir moderador':'Promover a moderador',()=>mutate(`/api/groups/${group.id}/members/${member.userId}/role`,{role:member.role==='MODERATOR'?'MEMBER':'MODERATOR'})),action('Transferir propriedade',()=>mutate(`/api/groups/${group.id}/transfer`,{userId:member.userId})));
         }
@@ -52,7 +56,7 @@ export function createGroupTools({api,profile,currentGroup,onChange}) {
       $('manage-requests').replaceChildren();
       if(settings.myRole!=='MEMBER') {
         const requests=await api('writer',`/api/groups/${group.id}/join-requests`);if(scope!==token||session!==epoch)return;
-        for(const request of requests){const row=node('div','member-row');row.append(node('strong','',request.displayName),action('Aprovar entrada',()=>mutate(`/api/groups/${group.id}/join-requests/${request.id}/approve`)),action('Recusar entrada',()=>mutate(`/api/groups/${group.id}/join-requests/${request.id}/decline`)));$('manage-requests').append(row);}
+        for(const request of requests){const row=node('div','member-row');row.append(groupName(request,{tag:'strong'}),action('Aprovar entrada',()=>mutate(`/api/groups/${group.id}/join-requests/${request.id}/approve`)),action('Recusar entrada',()=>mutate(`/api/groups/${group.id}/join-requests/${request.id}/decline`)));$('manage-requests').append(row);}
         if(!requests.length)$('manage-requests').append(node('p','muted','Nenhuma solicitação pendente.'));
       }
     }catch(problem){if(session===epoch&&scope===token)error(problem.message);}
@@ -83,5 +87,5 @@ export function createGroupTools({api,profile,currentGroup,onChange}) {
     }catch(problem){if(scope===token)error(problem.message);}finally{button.disabled=false;}
   };
   setInterval(()=>{if(active&&!document.hidden)inbox();},5000);
-  return {start(){active=true;epoch++;inbox();},reset(){active=false;epoch++;scope=null;inboxLoading=false;for(const id of ['group-invitations','manage-settings','manage-members','manage-requests','invite-results'])$(id).replaceChildren();$('invitations-heading').hidden=true;$('manage-dialog').close();},inbox};
+  return {start(){active=true;epoch++;inbox();},reset(){active=false;epoch++;scope=null;inboxLoading=false;for(const id of ['group-invitations','manage-settings','manage-members','manage-requests','invite-results'])$(id).replaceChildren();$('invitations-heading').hidden=true;$('manage-dialog').close();},inbox,async invite(){if(!currentGroup())return;$('manage-dialog').showModal();await load();if(!$('manage-invite').hidden){$('invite-search').scrollIntoView({block:'center'});$('invite-search').focus();}}};
 }

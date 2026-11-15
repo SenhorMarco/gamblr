@@ -182,4 +182,6 @@ de resultado, contestação, decisão do dono, cancelamento e pagamento está em
 [resultados.md](resultados.md), com ativação pela V008. Convites, aprovação de
 entrada, crédito diário e administração de integrantes estão em
 [administracao.md](administracao.md), com ativação pela V009. A interface segue
-como protótipo temporário. Prêmios internos continuam em aberto.
+como protótipo temporário. Cores e títulos por pontos estão em
+[personalização](personalizacao.md), com ativação pela V011; outros prêmios
+internos continuam em aberto.

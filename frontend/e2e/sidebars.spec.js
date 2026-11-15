@@ -1,0 +1,51 @@
+import {test,expect} from '@playwright/test';
+const uid=n=>`60000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
+
+test('responsive sidebars preserve navigation across desktop and mobile',async({page},testInfo)=>{
+  const errors=[],now=Date.now(),me={id:uid(1),displayName:'Marco'};
+  const groups=['Turma de sexta','Futebol dos amigos','Cinema de domingo','Trabalho e palpites'].map((name,index)=>({id:uid(10+index),ownerId:me.id,name,member:true,memberCount:3}));
+  const friends=[{id:uid(30),userId:uid(2),displayName:'Ana',status:'ACCEPTED',incoming:false},{id:uid(31),userId:uid(3),displayName:'Bia',status:'ACCEPTED',incoming:false},{id:uid(32),userId:uid(4),displayName:'Caio',status:'PENDING',incoming:true}];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.addInitScript(session=>sessionStorage.setItem('gamblr.session',JSON.stringify(session)),{access_token:'owner',refresh_token:'owner',expires_at:Math.floor(now/1000)+3600,user:{email:'marco@example.test',user_metadata:{display_name:'Marco'}}});
+  await page.route('**/status',route=>route.fulfill({json:{writer:true,reader:true}}));
+  await page.route('**/reader/api/**',route=>{
+    const path=new URL(route.request().url()).pathname,group=groups.find(group=>path.includes(group.id));
+    return route.fulfill({json:path.endsWith('/participation')?{groupId:group.id,bets:[]}:{groupId:group.id,ranking:[{userId:me.id,displayName:'Marco',position:1,availablePoints:100},{userId:uid(2),displayName:'Ana',position:2,availablePoints:85},{userId:uid(3),displayName:'Bia',position:3,availablePoints:70}]}});
+  });
+  await page.route('**/writer/api/**',route=>{
+    const path=new URL(route.request().url()).pathname;let json={};
+    if(path.endsWith('/api/me'))json=me;
+    else if(path.endsWith('/api/groups')||path.endsWith('/api/groups/public'))json=groups;
+    else if(path.endsWith('/api/friendships'))json=friends;
+    else if(path.endsWith('/api/group-invitations')||path.endsWith('/bets'))json=[];
+    else if(path.endsWith('/settings'))json={...groups.find(group=>path.includes(group.id)),myRole:'OWNER',canInvite:true};
+    else if(path.endsWith('/wallet/me'))json={availablePoints:100,reservedPoints:0};
+    else if(path.endsWith('/messages'))json={messages:[{id:1,authorId:uid(2),displayName:'Ana',body:path.includes('/friends/')?'Oi, Marco!':'Qual é o palpite de hoje?',sentAt:new Date(now).toISOString(),deleted:false,betId:null},{id:2,authorId:me.id,displayName:'Marco',body:'Vamos combinar com a turma.',sentAt:new Date(now+1000).toISOString(),deleted:false,betId:null}],nextBefore:null,canModerate:!path.includes('/friends/')};
+    else return route.fulfill({status:404,json:{code:'NOT_FOUND',message:'Não encontrado.'}});
+    return route.fulfill({json});
+  });
+  await page.goto('/');await expect(page.locator('#page-title')).toHaveText(groups[0].name);
+  await expect(page.locator('#friends-list .friend-nav')).toHaveCount(2);
+  await expect(page.locator('#group-list .group-nav')).toHaveCount(4);
+  await expect(page.locator('.chat-window').first()).toHaveCSS('border-radius','8px');
+  await expect(page.locator('#contacts-column')).toBeVisible();await expect(page.locator('#contacts-column #friends-list')).toHaveCount(1);
+  await expect(page.locator('.sidebar #friends-list')).toHaveCount(0);
+  await expect(page.locator('.sidebar')).toHaveCSS('position','sticky');await expect(page.locator('#contacts-column')).toHaveCSS('position','sticky');
+  const left=await page.locator('.sidebar').boundingBox(),main=await page.locator('.workspace').boundingBox(),bets=await page.locator('.right-column').boundingBox(),contacts=await page.locator('#contacts-column').boundingBox();
+  expect(left.x).toBeLessThan(30);expect(main.x).toBeGreaterThan(left.x+left.width);expect(bets.x).toBeGreaterThan(main.x+main.width);expect(contacts.x).toBeGreaterThan(bets.x+bets.width);expect(contacts.x+contacts.width).toBeGreaterThan(1410);
+  await page.screenshot({path:testInfo.outputPath('sidebars-desktop.png'),fullPage:true});
+  await page.locator('#friends-list .friend-nav').first().focus();
+  await page.setViewportSize({width:1024,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  await expect(page.locator('#contacts-column')).toBeVisible();
+  const tabletMain=await page.locator('.workspace').boundingBox(),tabletBets=await page.locator('.right-column').boundingBox();expect(tabletBets.x).toBe(tabletMain.x);expect(tabletBets.y).toBeGreaterThan(tabletMain.y);
+  await page.setViewportSize({width:820,height:900});await expect(page.locator('#contacts-column')).toBeHidden();await expect(page.locator('.sidebar #friends-list')).toHaveCount(1);
+  await expect(page.locator('#friends-list .friend-nav').first()).toBeFocused();
+  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  await expect(page.locator('#friends-list .friend-nav')).toHaveCount(2);await page.screenshot({path:testInfo.outputPath('sidebars-mobile.png'),fullPage:true});
+  await page.locator('#friends-list .friend-nav').first().press('Enter');await expect(page.locator('#private-chat-heading')).toHaveText('Ana');await expect(page.locator('#private-message')).toBeEnabled();
+  await page.locator('#private-message').fill('Rascunho preservado');
+  await page.setViewportSize({width:1440,height:1000});
+  await expect(page.locator('#private-message')).toHaveValue('Rascunho preservado');await expect(page.locator('#private-chat-heading')).toHaveText('Ana');
+  await expect(page.locator('#contacts-column')).toBeVisible();
+  expect(await page.locator('#friends-list').count()).toBe(1);expect(errors).toEqual([]);
+});

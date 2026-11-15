@@ -16,7 +16,7 @@ ROUTES = {
         "GET": [r"api/groups",r"api/groups/public",rf"api/groups/{UUID}/bets",rf"api/groups/{UUID}/wallet/me",rf"api/bets/{UUID}",rf"api/bets/{UUID}/prediction/me",r"api/users",r"api/friendships",rf"api/groups/{UUID}/messages",rf"api/friends/{UUID}/messages"],
         "POST": [r"api/me",r"api/groups",rf"api/groups/{UUID}/members/me",rf"api/groups/{UUID}/bets",rf"api/bets/{UUID}/predictions",r"api/friendships",rf"api/friendships/{UUID}/(?:accept|decline)",rf"api/groups/{UUID}/messages",rf"api/groups/{UUID}/messages/[0-9]+/delete",rf"api/friends/{UUID}/messages"],
     },
-    "reader": {"GET": [rf"api/groups/{UUID}/ranking",rf"api/bets/{UUID}/odds"]},
+    "reader": {"GET": [rf"api/groups/{UUID}/(?:ranking|participation)",rf"api/bets/{UUID}/odds"]},
 }
 ROUTES["writer"]["GET"].append(RESOLUTION_GET)
 ROUTES["writer"]["POST"].append(RESOLUTION_POST)
@@ -26,6 +26,11 @@ ROUTES["writer"]["POST"] += [
     rf"api/groups/{UUID}/members/{UUID}/(?:role|remove)",
     rf"api/groups/{UUID}/join-requests/{UUID}/(?:approve|decline)",
     rf"api/group-invitations/{UUID}/(?:accept|decline)",
+]
+ROUTES["writer"]["GET"].append(rf"api/groups/{UUID}/personalization")
+ROUTES["writer"]["POST"] += [
+    rf"api/groups/{UUID}/personalization/(?:prices|purchases)",
+    rf"api/groups/{UUID}/members/{UUID}/title/remove",
 ]
 
 

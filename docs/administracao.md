@@ -132,5 +132,7 @@ pendente até ser respondido ou até o grupo ser excluído. A primeira concessã
 de saldo e a entrada são atômicas em qualquer modalidade.
 
 Os testes Java usam PostgreSQL em schema temporário; os testes de navegador usam
-três sessões com respostas simuladas. Prêmios internos continuam em aberto,
-e a arquitetura definitiva do frontend permanece uma escolha técnica futura.
+três sessões com respostas simuladas. As personalizações por pontos estão
+definidas nos RF-35 a RF-40 de [requisitos](requisitos.md) e implementadas pela
+[V011](personalizacao.md), incluindo preços e remoção de títulos sem reembolso.
+A arquitetura definitiva do frontend permanece uma escolha técnica futura.

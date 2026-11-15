@@ -15,6 +15,18 @@ class FrontendServerTests(unittest.TestCase):
         response=self.client.get('/config')
         self.assertEqual({'supabaseUrl','publishableKey'},set(response.json))
         self.assertNotIn('sensitive',response.get_data(as_text=True))
+
+    def test_group_participation_proxy_keeps_reader_and_authorization(self):
+        upstream=Mock();upstream.__enter__=Mock(return_value=upstream);upstream.__exit__=Mock(return_value=False)
+        upstream.status=200;upstream.read.return_value=b'{}'
+        group='00000000-0000-0000-0000-000000000001'
+        route=f'/reader/api/groups/{group}/participation'
+        with patch('urllib.request.OpenerDirector.open',return_value=upstream) as opened:
+            self.assertEqual(200,self.client.get(route,headers={'Authorization':'Bearer member'}).status_code)
+            self.assertEqual(f'http://127.0.0.1:5000/api/groups/{group}/participation',opened.call_args.args[0].full_url)
+            self.assertEqual('Bearer member',opened.call_args.args[0].get_header('Authorization'))
+        self.assertEqual(404,self.client.post(route,json={}).status_code)
+        self.assertEqual(404,self.client.get(route+'?target=https://example.test').status_code)
     def test_static_frontend_and_security_headers(self):
         response=self.client.get('/')
         self.assertEqual(200,response.status_code)
@@ -70,11 +82,13 @@ class FrontendServerTests(unittest.TestCase):
         upstream=Mock();upstream.__enter__=Mock(return_value=upstream);upstream.__exit__=Mock(return_value=False)
         upstream.status=200;upstream.read.return_value=b'{}'
         group='00000000-0000-0000-0000-000000000001'
-        routes=[f'groups/{group}/settings',f'groups/{group}/members',f'groups/{group}/join-requests','group-invitations']
+        routes=[f'groups/{group}/settings',f'groups/{group}/members',f'groups/{group}/join-requests','group-invitations',f'groups/{group}/personalization']
         posts=[f'groups/{group}/{action}' for action in ('settings','leave','transfer','invitations','join-requests')]
         posts += [f'groups/{group}/members/{group}/{action}' for action in ('role','remove')]
         posts += [f'groups/{group}/join-requests/{group}/{action}' for action in ('approve','decline')]
         posts += [f'group-invitations/{group}/{action}' for action in ('accept','decline')]
+        posts += [f'groups/{group}/personalization/{action}' for action in ('prices','purchases')]
+        posts += [f'groups/{group}/members/{group}/title/remove']
         with patch('urllib.request.OpenerDirector.open',return_value=upstream) as opened:
             for route in routes:
                 self.assertEqual(200,self.client.get('/writer/api/'+route,headers={'Authorization':'Bearer member'}).status_code)
