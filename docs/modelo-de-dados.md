@@ -1,7 +1,8 @@
-# Modelo inicial do banco
+# Modelo de dados até V011
 
-Fonte de produto: [requisitos.md](requisitos.md). Este modelo prepara a persistência
-do fluxo de aposta de grupo. Não constitui uma implementação completa dos requisitos.
+Fonte de produto: [requisitos.md](requisitos.md). Este modelo descreve a persistência
+do fluxo de aposta de grupo. As regras transacionais e de autorização
+complementares estão implementadas nos serviços.
 
 ## Tabelas e consultas
 
@@ -25,32 +26,33 @@ do fluxo de aposta de grupo. Não constitui uma implementação completa dos req
 | `current_group_members` | Participação atual e vínculo emissor/subject para autorização do Flask (V006) | RF-13, RF-15 |
 | `group_ranking` | Ranking de membros atuais por saldo disponível e antiguidade da conta | RF-20 |
 | `personalization_purchases` (V011) | Comprovantes imutáveis de compras com chave de repetição, valor e preço pago | RF-35 a RF-38 |
-| `bet_odds` | Votos e odds agregados por opção, sem valor/autor dos palpites | RF-05, RF-13, RF-14 |
+| `bet_odds` | Votos e odds por pontos (V010), sem valor/autor individual dos palpites | RF-05, RF-13, RF-14 |
 
 As consultas devem usar o prefixo `gamblr.`, por exemplo `gamblr.bets`.
 
-## Escolhas técnicas desta etapa
+## Escolhas técnicas
 
 - IDs UUID gerados pelo PostgreSQL; não há referência a `auth.users` nem coluna de
   senha. O provedor escolhido é Supabase Auth; `user_identities` vincula o subject
   do token validado ao perfil interno. `app_users` não armazena credenciais de login.
 - Pontos em `numeric`, finitos e não negativos. Não fixamos casas decimais nem
   valores padrão de crédito, mínimo ou prazos do grupo. A regra de arredondamento
-  para baixo do RF-07 continua aplicável à parcela do prêmio. A aceitação de
-  valores fracionários ou zero na interface precisa ser explicitada antes de
-  implementar as validações de entrada, sem alterar o requisito do mínimo.
-- Instantes com `timestamptz`; duração dos prazos com `interval`. O backend usará
-  durações em segundos e calculará a data de crédito diário em `America/Sao_Paulo`.
+  para baixo do RF-07 continua aplicável à parcela do prêmio. As validações de
+  entrada estão em `Requests.java` e nos serviços,
+  incluindo os limites e o mínimo da aposta.
+- Instantes com `timestamptz`; duração dos prazos com `interval`. O backend usa
+  durações em segundos e calcula a data de crédito diário em `America/Sao_Paulo`.
 - A linha do integrante e a carteira permanecem após saída. `left_at` marca sua
   ausência; `first_joined_at` preserva antiguidade e `joined_at` marca a entrada
   mais recente. O dono é indicado em `groups.owner_id`; a role de integrante
   guarda apenas `MEMBER` ou `MODERATOR`, evitando dois indicadores de dono.
-- Não há exclusões em cascata. Não remover registros ao sair de grupo. O fluxo
-  de exclusão do grupo e sua política de retenção ainda precisam de implementação.
+- Não há exclusões em cascata. Não remover registros ao sair de grupo.
+  A V009 e o serviço de grupos implementam exclusão lógica,
+  preservando carteiras, participações e movimentações.
 - Não há taxa, compra/saque ou redistribuição das sobras. Os prêmios internos
   disponíveis são as [personalizações por pontos](personalizacao.md) da V011.
 
-## O que o banco já garante
+## Garantias do banco
 
 - Saldo e reserva nunca negativos; valores especiais como infinito/NaN rejeitados.
 - Uma carteira e uma linha de integrante por usuário/grupo.
@@ -63,10 +65,11 @@ As consultas devem usar o prefixo `gamblr.`, por exemplo `gamblr.bets`.
   perda ou devolução para o mesmo palpite.
 - Prazos de 10%/90% consistentes com publicação/término; resultados pertencem à aposta.
 - Flask lê somente as três views. Ele não recebe acesso direto às tabelas privadas.
-  Opção sem votos tem odd `NULL`, a ser exibida como “—”. A apresentação decide
-  como formatar as casas decimais, mantendo o cálculo pela contagem de votos.
+  Opção sem pontos tem odd `NULL`, exibida como “—”. Desde V010, a odd é
+  total de pontos dividido pelos pontos da opção. Votos são contados separadamente;
+  o reader formata odds com duas casas decimais.
 
-## Regras que ainda dependem do backend
+## Regras implementadas pelo backend
 
 O [serviço Spring Boot](writer.md) já implementa publicação, entrada pública
 imediata, provisionamento de perfil, reserva transacional, resultado, contestação
@@ -74,20 +77,18 @@ e conclusão financeira. A V009 acrescenta administração e crédito diário,
 descritos em [administracao.md](administracao.md).
 
 As FKs preservam vínculos históricos; elas não garantem que o integrante esteja
-ativo no momento de uma operação. Cada endpoint precisará validar a identidade,
+ativo no momento de uma operação. Os endpoints validam a identidade,
 a participação atual e as permissões de autor, moderador ou dono.
 
-O Spring confirma palpites em uma única transação: bloquear carteira
-e aposta em ordem consistente, conferir prazo, autor, estado, valor mínimo e saldo,
-registrar o palpite e a reserva e atualizar os saldos. A conferência do prazo deve
-usar o horário do servidor depois de obter os bloqueios. Os testes de integração
+O Spring confirma palpites em uma única transação: adquirir o lock do grupo e bloquear aposta, integrante
+e carteira em ordem consistente, conferir prazo, autor, estado, valor mínimo e saldo,
+registrar o palpite e a reserva e atualizar os saldos. A conferência do prazo usa o horário do servidor depois de obter os bloqueios. Os testes de integração
 Java exercitam esse protocolo, concorrência e rollback em schema temporário.
 
 O serviço publica aposta/opções atomicamente, oferece Sim/Não para binárias e
 copia os prazos do grupo. Não expõe endpoints de edição da proposta, opções ou
 palpites. O ciclo de resultado, retirada de contestações por saída e conclusão
-automática está implementado em [resultados.md](resultados.md). Falta definir
-a interface definitiva. Crédito diário, transferência/sucessão e
+automática está implementado em [resultados.md](resultados.md). Crédito diário, transferência/sucessão e
 as APIs de saída/remoção estão implementados pela V009.
 
 O histórico não atualiza automaticamente a carteira, nem a carteira gera histórico.
@@ -96,7 +97,7 @@ reserva, no crédito inicial e nas conclusões financeiras. As restrições impe
 duplicações e saldos negativos, mas não
 substituem essas transações.
 
-O Flask deve filtrar cada consulta pelo grupo autorizado. A credencial de leitura
+O Flask filtra cada consulta pelo grupo autorizado. A credencial de leitura
 é uma credencial de servidor e consegue consultar agregados de vários grupos;
 ela nunca será entregue ao navegador. As views não decidem quem está autenticado.
 

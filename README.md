@@ -1,14 +1,29 @@
 # Gamblr
 
-Plataforma web para conversar em grupos e fazer previsões com pontos virtuais.
-O frontend consome uma API REST em Java para operações de escrita e uma API
-REST em Python para ranking, odds e participação nas apostas.
+Plataforma de apostas em grupos com **pontos virtuais**, sem compra ou saque.
+Permite criar grupos, publicar apostas, reservar palpites, acompanhar ranking e
+odds, conversar e apurar resultados. Integrantes: **Ferreira, Brasil e Kossooski**.
 
-Projeto Final — Laboratório de Programação II.
-Integrantes: **a informar pela equipe antes da entrega**.
-Vídeo e divisão do trabalho: preparados pela equipe.
+Funcionalidades: grupos públicos e privados, convites e moderação, crédito
+diário, Feed de apostas, amizades e chats, apuração e contestação de resultados
+e compra de cores e títulos com os pontos do grupo.
 
-## Organização e tecnologias
+## Arquitetura e tecnologias
+
+| Componente | Localização | Responsabilidade | Porta |
+| --- | --- | --- | --- |
+| Java 21 / Spring Boot 4.1.2 | `services/writer` | Operações de domínio, transações e autorização | 8080 |
+| Python / Flask 3.1.3 | `services/reader` | Ranking, participação e odds | 5000 |
+| HTML, CSS e JavaScript / proxy Flask | `frontend` e `services/web` | Interface e acesso às duas APIs | 5173 |
+| PostgreSQL / Supabase Auth | Projeto Supabase | Persistência e autenticação | Serviço remoto |
+
+Java/Spring Boot cuida das escritas e regras do domínio; Python/Flask consulta
+ranking, participação e odds. O frontend HTML/CSS/JavaScript consome as duas APIs
+por um proxy Python de mesma origem. PostgreSQL e autenticação por email/senha
+ficam no **Supabase**. Os três processos rodam localmente, mas precisam de internet
+para banco e Auth; o projeto não funciona offline.
+
+## Organização do repositório
 
 ```text
 gamblr/
@@ -35,144 +50,185 @@ As três partes exigidas pelo enunciado estão em pastas distintas:
 (interface). `services/web` serve os arquivos da interface e encaminha
 requisições; as duas APIs continuam sendo processos independentes.
 
-| Parte | Tecnologia | Endereço padrão |
-| --- | --- | --- |
-| API Java | Java 21+, Spring Boot 4.1.2, JDBC, Gradle Wrapper | http://127.0.0.1:8080 |
-| API Python | Python, Flask, PyJWT, pg8000 | http://127.0.0.1:5000 |
-| Frontend | HTML/CSS/JavaScript, servidor e proxy Flask | http://127.0.0.1:5173 |
-| Persistência e login | PostgreSQL e Supabase Auth | Projeto Supabase configurado pela equipe |
+## Pré-requisitos
 
-O site e as duas APIs rodam localmente. O PostgreSQL e a autenticação ficam no
-Supabase, portanto é necessária conexão com a internet durante o uso.
+- Git, **JDK 21** (incluindo `javac`), **Python 3.13** com `venv`/pip e navegador atual.
+- Projeto Supabase e acesso às configurações de banco e Auth e ao SQL Editor.
+- Internet para o Supabase e para baixar dependências no primeiro uso.
+- No Windows, prefira Python de [Python.org](https://www.python.org/downloads/windows/).
+  A edição Microsoft Store pode deixar processos descendentes ativos ao encerrar
+  o supervisor; use a distribuição convencional para o comando único.
 
-## Preparação a partir de um clone novo
+O Gradle Wrapper **9.9.1** dispensa instalação global do Gradle. Node.js é
+necessário apenas para testes do frontend; não há build JavaScript obrigatório.
+As dependências Python são Flask 3.1.3, PyJWT com criptografia 2.15.1,
+pg8000 1.31.6 e python-dotenv 1.2.4, instaladas pelos dois arquivos de requisitos.
 
-### 1. Pré-requisitos e dependências
+Confira `java -version`, `javac -version` e `python --version` no PowerShell;
+no Linux/Bash, use `python3 --version`. `JAVA_HOME`, se definido, deve apontar
+para o JDK 21. No Linux, instale o suporte a `venv` do Python.
 
-Instale Git, Python 3.10 ou superior e um JDK 21 ou superior. Confirme que
-`python` (ou `python3` no Linux) e `java` estão no PATH. O Gradle Wrapper está
-versionado, dispensando uma instalação global do Gradle; seu primeiro uso baixa
-a distribuição e as dependências Java. Node.js é opcional e usado apenas para
-os testes do frontend, não para executar o site.
+## Primeira instalação
 
-No Windows/PowerShell:
+### 1. Obter o projeto
+
+Windows/PowerShell ou Linux/Bash, na pasta onde deseja guardar o projeto:
 
 ```powershell
 git clone https://github.com/SenhorMarco/gamblr.git
 cd gamblr
+```
+
+Em checkout existente, preserve alterações e configuração. Os comandos seguintes
+partem da raiz do projeto.
+
+### 2. Ambiente Python e dependências
+
+Windows/PowerShell:
+
+```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r scripts/requirements.txt -r services/reader/requirements.txt
-if (-not (Test-Path -LiteralPath .env)) { Copy-Item -LiteralPath .env.example -Destination .env }
-New-Item -ItemType Directory -Force -Path certs
 ```
 
-No Linux:
+Linux:
 
 ```bash
-git clone https://github.com/SenhorMarco/gamblr.git
-cd gamblr
 python3 -m venv .venv
 .venv/bin/python -m pip install -r scripts/requirements.txt -r services/reader/requirements.txt
-test -f .env || cp .env.example .env
-mkdir -p certs
 ```
 
-Os comandos seguintes são executados na raiz do repositório. Não sobrescreva
-um `.env` que já esteja configurado.
+Não recrie um ambiente já configurado sem necessidade. Uma `.venv` do Windows não
+é reutilizável no Linux. Não é preciso ativá-la: os comandos usam seu interpretador
+explicitamente. Instalar somente `scripts/requirements.txt` não instala Flask/PyJWT.
 
-### 2. Banco e autenticação no Supabase
+## Configuração de ambiente, banco e autenticação
 
-Em um **projeto Supabase novo**, faça esta preparação uma única vez:
+### 1. Arquivo local e certificado
 
-1. Crie o projeto e guarde a senha do PostgreSQL.
-2. No SQL Editor, como `postgres`, execute o conteúdo completo de
-   `database/bootstrap/001_roles.sql`. Ele cria as roles técnicas e o schema
-   privado `gamblr`.
-3. Ainda como `postgres`, execute cada arquivo de `database/migrations`,
-   integralmente e em ordem de **V001 a V011**. Execute um arquivo por vez e
-   prossiga somente após seu sucesso. Em um ambiente existente, aplique apenas
-   as migrações ainda não executadas; não recrie roles, schema ou tabelas.
-4. Gere senhas distintas para as três roles. Execute a consulta abaixo com
-   valores reais escolhidos por você, em uma consulta privada do SQL Editor:
-
-   ```sql
-   ALTER ROLE gamblr_migrator LOGIN PASSWORD 'SENHA_DO_MIGRADOR';
-   ALTER ROLE gamblr_writer LOGIN PASSWORD 'SENHA_DO_WRITER';
-   ALTER ROLE gamblr_reader LOGIN PASSWORD 'SENHA_DO_READER';
-   ```
-
-   Os textos acima são exemplos a substituir. Se uma senha contiver aspas
-   simples, duplique-as no literal SQL. Não salve a consulta preenchida no Git.
-5. Em **Connect → Session pooler**, copie host, porta, banco e usuário. Para o
-   pooler, o usuário administrativo é `postgres.PROJECT_REF` e os usuários
-   técnicos seguem `gamblr_writer.PROJECT_REF`, `gamblr_reader.PROJECT_REF` e
-   `gamblr_migrator.PROJECT_REF`. Use a porta indicada para o **Session pooler**,
-   normalmente 5432.
-6. Baixe o certificado CA do banco na configuração de SSL do projeto e salve-o
-   localmente em `certs/supabase-ca.crt`.
-7. Obtenha a **Project URL** e a chave pública **publishable** em API Keys.
-   Em Authentication, habilite login por email/senha e use chaves de assinatura
-   assimétricas ES256 ou RS256. O schema `gamblr` deve permanecer fora dos schemas
-   expostos pela Data API; o frontend acessa os backends locais.
-8. Para uma demonstração sem depender da entrega de email, crie duas contas
-   de teste em **Authentication → Users → Add user**, com emails confirmados.
-   O cadastro normal do site também existe; quando a confirmação de email
-   estiver habilitada, confirme a conta antes de entrar.
-
-Preencha o `.env` a partir do modelo. Estes são os grupos de campos necessários:
-
-| Configuração | Variáveis |
-| --- | --- |
-| Conexão PostgreSQL | `SUPABASE_DB_HOST`, `SUPABASE_DB_PORT`, `SUPABASE_DB_NAME` |
-| TLS | `SUPABASE_DB_SSLMODE=verify-full`, `SUPABASE_DB_SSLROOTCERT=certs/supabase-ca.crt` |
-| API Java | `GAMBLR_WRITE_DB_USER`, `GAMBLR_WRITE_DB_PASSWORD` |
-| API Python | `GAMBLR_READ_DB_USER`, `GAMBLR_READ_DB_PASSWORD` |
-| Login do site | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` |
-| Migrações e testes | `GAMBLR_MIGRATION_DB_USER`, `GAMBLR_MIGRATION_DB_PASSWORD` |
-| Administração e integração | `SUPABASE_DB_USER`, `SUPABASE_DB_PASSWORD` |
-
-Mantenha `GAMBLR_AUTH_ISSUER` vazio: ele é derivado de `SUPABASE_URL`.
-As portas padrão são `GAMBLR_WRITER_PORT=8080` e `GAMBLR_READER_PORT=5000`;
-elas devem ser diferentes. `GAMBLR_BIND_ADDRESS=127.0.0.1` limita o acesso à
-máquina local. As credenciais de administração e migração não são usadas pelo
-site nem pelas APIs durante a execução normal. O navegador recebe apenas a URL
-de autenticação e a chave pública; senhas do banco ficam nos backends.
-
-### 3. Executar as três partes
-
-Opção recomendada, com todos os processos no mesmo terminal:
+Crie um projeto Supabase de desenvolvimento dedicado. Em **Connect → Session
+pooler**, obtenha host, porta, banco e usuário. Na raiz do projeto, copie o modelo
+somente se não existir (Windows/PowerShell):
 
 ```powershell
-.\iniciar.cmd
+if (-not (Test-Path -LiteralPath .env)) { Copy-Item -LiteralPath .env.example -Destination .env }
 ```
 
-No Linux:
+No Linux/Bash, na raiz:
 
 ```bash
-./iniciar.sh
+test -e .env || cp .env.example .env
 ```
 
-Aguarde **Todos os servicos estao prontos** e abra **http://127.0.0.1:5173**.
-Mantenha o terminal aberto. Ctrl+C encerra os processos iniciados pelo comando.
-Se a primeira compilação demorar, use `iniciar.cmd --timeout 600` ou
-`./iniciar.sh --timeout 600`.
+Preencha o arquivo local; nunca envie senhas/tokens ao Git. Preserve valores existentes e use senhas distintas.
 
-Para iniciar cada parte separadamente, use **três terminais**, sempre na raiz:
+| Configuração | Preenchimento |
+| --- | --- |
+| `SUPABASE_DB_HOST`, `SUPABASE_DB_PORT`, `SUPABASE_DB_NAME` | Session pooler; normalmente porta 5432, banco `postgres` |
+| `SUPABASE_DB_USER`, `SUPABASE_DB_PASSWORD` | Admin `postgres.PROJECT_REF`; preparação/verificadores, não execução dos serviços |
+| `GAMBLR_MIGRATION_DB_USER`, `GAMBLR_MIGRATION_DB_PASSWORD` | `gamblr_migrator.PROJECT_REF` e senha própria |
+| `GAMBLR_WRITE_DB_USER`, `GAMBLR_WRITE_DB_PASSWORD` | `gamblr_writer.PROJECT_REF` e senha própria; Java |
+| `GAMBLR_READ_DB_USER`, `GAMBLR_READ_DB_PASSWORD` | `gamblr_reader.PROJECT_REF` e senha própria; Flask |
+| `SUPABASE_DB_SSLMODE` | Use `verify-full`; os serviços verificam TLS e hostname |
+| `SUPABASE_DB_SSLROOTCERT` | CA, por exemplo `certs/supabase-ca.crt`; obrigatório nos lançadores Java/Flask |
+| `SUPABASE_URL` | Project URL HTTPS, sem `/auth/v1` ao final |
+| `SUPABASE_PUBLISHABLE_KEY` | Publishable ou anon legada; nunca secret/service_role; exposta ao navegador |
+| `GAMBLR_AUTH_ISSUER` | Deixe vazio; deriva de `SUPABASE_URL/auth/v1` |
+| `GAMBLR_WRITER_PORT`, `GAMBLR_READER_PORT` | 8080 e 5000; devem ser diferentes |
+| `GAMBLR_BIND_ADDRESS` | `127.0.0.1`; `0.0.0.0` somente para acesso pela rede local |
 
-| Parte | Windows/PowerShell | Linux | Porta |
-| --- | --- | --- | --- |
-| API Java | `.\.venv\Scripts\python.exe scripts/writer.py bootRun` | `.venv/bin/python scripts/writer.py bootRun` | 8080 |
-| API Python | `.\.venv\Scripts\python.exe scripts/reader.py run` | `.venv/bin/python scripts/reader.py run` | 5000 |
-| Frontend | `.\.venv\Scripts\python.exe scripts/frontend.py` | `.venv/bin/python scripts/frontend.py` | 5173 |
+Baixe o CA do projeto em **Database Settings → SSL Configuration**, crie `certs/`
+e salve o PEM. Os lançadores resolvem o caminho relativo a partir da raiz; com
+Gradle/IDE diretamente, use caminho absoluto. `.env`, `certs/`, `.venv/`, `.tools/`
+e builds são locais e ignorados. Os scripts Python leem `.env` sem expandir
+`${...}`; `gradlew bootRun` sozinho não o carrega.
 
-Escolha o comando único **ou** os três terminais para não disputar as mesmas
-portas. Pare instâncias anteriores com Ctrl+C antes de reiniciar. O frontend
-pode usar outra porta com `scripts/frontend.py --port 5174`; no comando único,
-use `iniciar.cmd --port 5174` ou `./iniciar.sh --port 5174`.
+### 2. Roles, migrações e Auth
 
-### 4. Conferir a execução e usar a plataforma
+Em projeto novo, no **SQL Editor**, como `postgres`:
 
-No PowerShell, após iniciar:
+1. Execute [bootstrap/001_roles.sql](database/bootstrap/001_roles.sql) completo.
+   Cria as roles `gamblr_migrator`, `gamblr_writer`, `gamblr_reader` sem login e o
+   schema privado `gamblr`.
+2. Execute todos os arquivos de [database/migrations](database/migrations), um
+   por consulta, na ordem **V001 → V002 → V003 → V004 → V005 → V006 → V007 → V008 →
+   V009 → V010 → V011**. Cada arquivo controla sua transação e assume o migrador.
+   Pare em caso de erro. Não repita migrações aplicadas nem altere seus arquivos.
+   Registre as versões: não há executor/histórico automático de migrações.
+3. Em consulta privada do SQL Editor, habilite login nas três roles com senhas
+   diferentes, usando o modelo abaixo. Substitua os exemplos por senhas geradas;
+   não salve a consulta preenchida no Git ou em consultas compartilhadas. Preencha
+   as três credenciais no `.env` (no pooler, acrescente `.PROJECT_REF` ao usuário).
+4. Mantenha `gamblr` fora dos schemas expostos pela Data API. Os serviços usam
+   PostgreSQL diretamente; não conceda tabelas a `anon`/`authenticated`. O writer
+   não recebe DDL; o reader lê apenas views explicitamente autorizadas.
+5. No Auth, habilite Email/senha e assinatura **ES256 ou RS256**. Projeto legado
+   somente HS256 precisa preparar a migração para chaves assimétricas. Configure
+   Site URL/redirects para o endereço local se testar confirmação de email.
+   Para experimentar com duas pessoas, crie duas contas de desenvolvimento
+   confirmadas em **Authentication → Users → Add user → Create new user**, com
+   senhas próprias e confirmação individual. Não desabilite a confirmação global.
+   O cadastro pela interface também pode ser usado; a entrega de emails depende
+   das configurações de envio/SMTP do projeto.
+
+Modelo SQL para o passo 3, no SQL Editor como `postgres`:
+
+```sql
+ALTER ROLE gamblr_migrator LOGIN PASSWORD 'SENHA_DO_MIGRADOR';
+ALTER ROLE gamblr_writer LOGIN PASSWORD 'SENHA_DO_WRITER';
+ALTER ROLE gamblr_reader LOGIN PASSWORD 'SENHA_DO_READER';
+```
+
+Não execute os valores de exemplo. Uma aspa simples dentro da senha deve ser
+escrita duas vezes no literal SQL; guarde a senha original no `.env`.
+
+V005 vincula identidades; V006 autoriza consultas; V007 acrescenta chats; V008,
+resultados/pagamentos; V009, administração/crédito diário; V010, odds por pontos;
+V011, personalização e colunas exigidas pelo ranking atual. O código atual requer
+**V011**, mesmo quando um guia de funcionalidade descreve uma migração anterior.
+Detalhes: [banco](docs/banco-de-dados.md), [TLS/conexão](docs/supabase.md) e
+[Auth](docs/supabase-auth.md). Não execute a instalação sobre banco compartilhado
+existente sem revisar o estado e planejar a atualização.
+
+### 3. Conferir configuração e compilar
+
+Windows/PowerShell, na raiz do projeto:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/check_supabase.py --all --model
+.\.venv\Scripts\python.exe scripts/supabase_auth.py check
+.\.venv\Scripts\python.exe scripts/reader.py check
+.\.venv\Scripts\python.exe scripts/writer.py build
+```
+
+No Linux substitua `.\.venv\Scripts\python.exe` por `.venv/bin/python`. Os três
+verificadores fazem leituras; não criam contas nem aplicam migrações. O build Java
+não precisa de banco e ignora integração se `GAMBLR_IT` estiver ausente. Não defina
+essa variável no build comum. O primeiro build baixa Gradle/dependências.
+
+## Inicialização rotineira
+
+Na raiz do projeto, após instalar e configurar, execute `.\iniciar.cmd` no
+Windows/PowerShell ou `./iniciar.sh` no Linux/Bash. Aguarde **Todos os servicos estao prontos** e abra **http://127.0.0.1:5173**.
+Ctrl+C encerra os processos iniciados. Pare instâncias anteriores antes de iniciar.
+Use `--timeout 600` para aumentar a espera, `--backend-only` para somente as APIs
+ou `--port 5174` para trocar a porta do site. O comando não instala dependências
+nem aplica migrações. Veja [execução local](docs/execucao-local.md).
+
+Para iniciar separadamente, use um terminal por componente:
+
+| Componente | Comando Windows na raiz | Porta |
+| --- | --- | --- |
+| Java | `.\.venv\Scripts\python.exe scripts/writer.py bootRun` | 8080 |
+| Python | `.\.venv\Scripts\python.exe scripts/reader.py run` | 5000 |
+| Frontend/proxy | `.\.venv\Scripts\python.exe scripts/frontend.py` | 5173 |
+
+No Linux use `.venv/bin/python` nos mesmos comandos. O frontend é servido por
+Flask, não por Vite, apesar da porta 5173.
+
+### Conferir disponibilidade
+
+Windows/PowerShell, em qualquer diretório:
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8080/health
@@ -180,18 +236,41 @@ Invoke-RestMethod http://127.0.0.1:5000/health
 Invoke-RestMethod http://127.0.0.1:5173/status
 ```
 
-Os dois primeiros devem retornar `status: UP`; o terceiro deve indicar
-`writer: true` e `reader: true`. No Linux, use `curl` nos mesmos endereços.
+No Linux/Bash, use `curl` com os mesmos endereços. Os endpoints `/health`
+retornam `UP`; `/status` informa a disponibilidade HTTP das duas APIs.
+Essas respostas não verificam o login ou as operações de banco.
 
-1. Entre no site com uma conta de teste e crie um grupo público com 100 pontos
-   iniciais. Abra **Outra sessão**, entre com a segunda conta e participe do grupo.
-2. Publique uma aposta com término futuro e duas opções. Com a outra conta,
-   confirme um palpite. A carteira, o ranking, as odds e as barras devem refletir
-   a participação. O autor da aposta não pode apostar nela.
-3. Use o chat do grupo e **Gerenciar grupo**. O dono pode ajustar os três preços
-   de personalização; integrantes podem adquirir cores e títulos com pontos.
-4. Para testar resultado e pagamento, crie uma aposta curta e aguarde o término.
-   O autor publica o resultado; o encerramento segue os prazos configurados.
+## Como usar
+
+1. **Entrar:** cadastre-se e confirme o email, quando exigido pelo Supabase,
+   ou use uma conta já confirmada. O login provisiona o perfil no Java.
+2. **Criar ou encontrar um grupo:** use **Criar grupo** para definir nome,
+   visibilidade, entrada, pontos e prazos. Em **Explorar grupos**, entre em um
+   grupo público ou solicite acesso. Grupos privados usam convites.
+3. **Publicar e palpitar:** em **Nova aposta**, informe pergunta, opções, término
+   e valor mínimo. O autor não pode palpitar na própria proposta. Use **Outra
+   sessão** para entrar com uma segunda conta, ingressar no grupo e participar.
+   Um palpite de 30 com saldo inicial de 100 deixa 70 disponíveis e 30 reservados,
+   considerando somente essa operação. O palpite é único e definitivo; novos
+   palpites fecham aos 90% da duração da aposta.
+4. **Acompanhar:** consulte as apostas do grupo ou o **Feed**, com filtros por
+   grupo, situação, data e texto. O ranking usa saldo disponível. As odds usam
+   total de pontos dividido pelos pontos da opção; as barras contam pessoas.
+   Opção sem pontos exibe “—”. As odds são atualizadas por long polling.
+5. **Conversar:** use o chat do grupo ou envie um pedido em **AMIGOS**. O chat
+   privado fica disponível após o aceite e não oferece apostas.
+6. **Apurar:** depois do término, o autor publica o resultado. Participantes
+   podem contestar no prazo, e o dono decide as contestações. O Java processa
+   pagamentos e devoluções; mantenha-o em execução para apuração e crédito diário.
+7. **Gerenciar e personalizar:** em **Gerenciar grupo**, consulte integrantes,
+   convide, saia ou use as ações permitidas ao seu papel. O dono configura
+   preços de cor do nome, texto e cor do título; compras usam saldo disponível.
+
+Para observar a integração, abra a aba **Network** do navegador: criação,
+mensagens e palpites usam `/writer/api/...`; ranking, participação e odds usam
+`/reader/api/...`. Login e renovação de sessão acessam o Supabase Auth.
+O [roteiro por terminal](docs/demonstracao.md) aprofunda publicação e reserva
+com duas contas, incluindo a rejeição de palpite duplicado.
 
 ## Integração real entre frontend e APIs
 
@@ -209,118 +288,137 @@ As chamadas ficam centralizadas em `frontend/static/app.js`, na função `api`;
 os módulos de chat, grupos e apresentação recebem essa função. A aba Network
 do navegador permite identificar qual backend atende cada ação.
 
-## Endpoints da API Python — porta 5000
+## Endpoints
 
-| Método | Rota | Uso |
+As tabelas listam as APIs diretas. Exceto `/health`, exigem
+`Authorization: Bearer ACCESS_TOKEN` do Supabase Auth (ES256/RS256, issuer do
+projeto, audience/role `authenticated`). Java resolve o perfil interno;
+`POST /api/me` o provisiona. Demais operações exigem perfil e permissões de domínio.
+“Membro” é integrante atual; prazos, estado e saldo também podem impedir operações.
+Parâmetros entre chaves são UUIDs, salvo ID numérico de mensagem.
+
+### Java — http://127.0.0.1:8080
+
+Inventário dos cinco controllers em `services/writer/src/main/java/com/gamblr/writer`.
+
+| Método | Caminho | Finalidade / autorização adicional |
 | --- | --- | --- |
-| GET | `/health` | Disponibilidade do serviço |
-| GET | `/api/groups/{group_id}/ranking` | Ranking dos integrantes por saldo disponível |
-| GET | `/api/groups/{group_id}/participation` | Contagens de palpites por opção, em lote por grupo |
-| GET | `/api/bets/{bet_id}/odds` | Odds e contagens agregadas da aposta |
+| GET | `/health` | Estado HTTP; público |
+| POST | `/api/me` | Criar/recuperar perfil do JWT |
+| POST | `/api/groups` | Criar grupo |
+| GET | `/api/groups` | Meus grupos |
+| GET | `/api/groups/public` | Descobrir grupos públicos |
+| POST | `/api/groups/{group}/members/me` | Entrar em grupo público de entrada imediata |
+| GET | `/api/groups/{group}/wallet/me` | Minha carteira; membro |
+| POST | `/api/groups/{group}/bets` | Publicar; membro |
+| GET | `/api/groups/{group}/bets` | Listar apostas; membro |
+| GET | `/api/bets/{bet}` | Proposta; membro |
+| POST | `/api/bets/{bet}/predictions` | Reservar palpite; membro diferente do autor |
+| GET | `/api/bets/{bet}/prediction/me` | Próprio palpite; membro |
+| GET | `/api/users?name=...` | Buscar pessoas pelo nome |
+| GET | `/api/friendships` | Minhas amizades/pedidos |
+| POST | `/api/friendships` | Solicitar amizade |
+| POST | `/api/friendships/{id}/accept` | Aceitar; destinatário |
+| POST | `/api/friendships/{id}/decline` | Recusar; destinatário |
+| GET | `/api/groups/{group}/messages` | Histórico desde entrada; membro; `before` opcional |
+| POST | `/api/groups/{group}/messages` | Enviar; membro |
+| POST | `/api/groups/{group}/messages/{id}/delete` | Apagar; dono/moderador |
+| GET | `/api/friends/{friend}/messages` | Histórico privado; amizade aceita; `before` opcional |
+| POST | `/api/friends/{friend}/messages` | Enviar mensagem; amizade aceita |
+| GET | `/api/groups/{group}/settings` | Configuração; membro |
+| POST | `/api/groups/{group}/settings` | Configurar; dono |
+| GET | `/api/groups/{group}/members` | Integrantes; membro |
+| POST | `/api/groups/{group}/members/{user}/role` | Alterar moderação; dono |
+| POST | `/api/groups/{group}/members/{user}/remove` | Remover; dono ou moderador sobre membro comum |
+| POST | `/api/groups/{group}/leave` | Sair; membro; aplica sucessão |
+| POST | `/api/groups/{group}/transfer` | Transferir propriedade; dono |
+| POST | `/api/groups/{group}/invitations` | Convidar; membro autorizado pela política do grupo |
+| GET | `/api/group-invitations` | Meus convites pendentes |
+| POST | `/api/group-invitations/{id}/accept` | Aceitar convite; destinatário |
+| POST | `/api/group-invitations/{id}/decline` | Recusar convite; destinatário |
+| POST | `/api/groups/{group}/join-requests` | Solicitar entrada pública com aprovação |
+| GET | `/api/groups/{group}/join-requests` | Pedidos; dono/moderador |
+| POST | `/api/groups/{group}/join-requests/{id}/approve` | Aprovar; dono/moderador |
+| POST | `/api/groups/{group}/join-requests/{id}/decline` | Recusar; dono/moderador |
+| GET | `/api/groups/{group}/personalization` | Estilo/preços; membro |
+| POST | `/api/groups/{group}/personalization/prices` | Configurar preços; dono |
+| POST | `/api/groups/{group}/personalization/purchases` | Comprar personalização; membro |
+| POST | `/api/groups/{group}/members/{user}/title/remove` | Remover título próprio ou moderação permitida |
+| GET | `/api/bets/{bet}/resolution` | Apuração; membro |
+| POST | `/api/bets/{bet}/result` | Publicar resultado; autor membro, no prazo |
+| POST | `/api/bets/{bet}/contests` | Contestar; membro com palpite |
+| POST | `/api/bets/{bet}/decision` | Decidir contestações; dono |
+| POST | `/api/bets/{bet}/cancel` | Cancelar; autor, primeiros 10% da duração |
+| POST | `/api/bets/{bet}/delete` | Excluir aposta; dono |
 
-## Endpoints da API Java — porta 8080
+Corpos/regras: [writer](docs/writer.md), [chats](docs/chats.md),
+[administração](docs/administracao.md), [resultados](docs/resultados.md) e
+[personalização](docs/personalizacao.md). Algumas escritas retornam corpo vazio;
+consultas retornam JSON e erros das APIs usam `code`/`message`.
 
-As rotas abaixo são relativas ao backend Java; `{group}`, `{bet}`, `{user}`,
-`{id}` e demais parâmetros representam os identificadores do recurso.
+### Python — http://127.0.0.1:5000
 
-| Método | Rota | Responsabilidade |
+Inventário de `services/reader/gamblr_reader/__init__.py`:
+
+| Método | Caminho | Finalidade / autorização adicional |
 | --- | --- | --- |
-| GET | `/health` | Disponibilidade do serviço |
-| POST | `/api/me` | Perfil, grupos, carteira e apostas |
-| POST | `/api/groups` | Perfil, grupos, carteira e apostas |
-| GET | `/api/groups` | Perfil, grupos, carteira e apostas |
-| GET | `/api/groups/public` | Perfil, grupos, carteira e apostas |
-| POST | `/api/groups/{group}/members/me` | Perfil, grupos, carteira e apostas |
-| GET | `/api/groups/{group}/wallet/me` | Perfil, grupos, carteira e apostas |
-| POST | `/api/groups/{group}/bets` | Perfil, grupos, carteira e apostas |
-| GET | `/api/groups/{group}/bets` | Perfil, grupos, carteira e apostas |
-| GET | `/api/bets/{bet}` | Perfil, grupos, carteira e apostas |
-| POST | `/api/bets/{bet}/predictions` | Perfil, grupos, carteira e apostas |
-| GET | `/api/bets/{bet}/prediction/me` | Perfil, grupos, carteira e apostas |
-| GET | `/api/users` | Amizades e mensagens |
-| GET | `/api/friendships` | Amizades e mensagens |
-| POST | `/api/friendships` | Amizades e mensagens |
-| POST | `/api/friendships/{id}/accept` | Amizades e mensagens |
-| POST | `/api/friendships/{id}/decline` | Amizades e mensagens |
-| GET | `/api/groups/{group}/messages` | Amizades e mensagens |
-| POST | `/api/groups/{group}/messages` | Amizades e mensagens |
-| POST | `/api/groups/{group}/messages/{id}/delete` | Amizades e mensagens |
-| GET | `/api/friends/{friend}/messages` | Amizades e mensagens |
-| POST | `/api/friends/{friend}/messages` | Amizades e mensagens |
-| GET | `/api/groups/{group}/settings` | Administração dos grupos |
-| POST | `/api/groups/{group}/settings` | Administração dos grupos |
-| GET | `/api/groups/{group}/members` | Administração dos grupos |
-| POST | `/api/groups/{group}/members/{user}/role` | Administração dos grupos |
-| POST | `/api/groups/{group}/members/{user}/remove` | Administração dos grupos |
-| POST | `/api/groups/{group}/leave` | Administração dos grupos |
-| POST | `/api/groups/{group}/transfer` | Administração dos grupos |
-| POST | `/api/groups/{group}/invitations` | Administração dos grupos |
-| GET | `/api/group-invitations` | Administração dos grupos |
-| POST | `/api/group-invitations/{id}/accept` | Administração dos grupos |
-| POST | `/api/group-invitations/{id}/decline` | Administração dos grupos |
-| POST | `/api/groups/{group}/join-requests` | Administração dos grupos |
-| GET | `/api/groups/{group}/join-requests` | Administração dos grupos |
-| POST | `/api/groups/{group}/join-requests/{id}/approve` | Administração dos grupos |
-| POST | `/api/groups/{group}/join-requests/{id}/decline` | Administração dos grupos |
-| GET | `/api/bets/{bet}/resolution` | Resultado, contestação e pagamento |
-| POST | `/api/bets/{bet}/result` | Resultado, contestação e pagamento |
-| POST | `/api/bets/{bet}/contests` | Resultado, contestação e pagamento |
-| POST | `/api/bets/{bet}/decision` | Resultado, contestação e pagamento |
-| POST | `/api/bets/{bet}/cancel` | Resultado, contestação e pagamento |
-| POST | `/api/bets/{bet}/delete` | Resultado, contestação e pagamento |
-| GET | `/api/groups/{group}/personalization` | Cores e títulos por pontos |
-| POST | `/api/groups/{group}/personalization/prices` | Cores e títulos por pontos |
-| POST | `/api/groups/{group}/personalization/purchases` | Cores e títulos por pontos |
-| POST | `/api/groups/{group}/members/{user}/title/remove` | Cores e títulos por pontos |
+| GET | `/health` | Estado HTTP, sem banco; público |
+| GET | `/api/groups/{group}/ranking` | Ranking por saldo disponível; membro |
+| GET | `/api/groups/{group}/participation` | Votos agregados das apostas do grupo; membro |
+| GET | `/api/bets/{bet}/odds` | Odds por pontos e votos; membro; `X-Odds-Version` opcional para long polling |
 
+O reader não cria perfil nem entra em grupo. Consultas de negócio usam transações
+somente leitura. Veja formatos em [reader](docs/reader.md).
 
-Todas as rotas de negócio exigem `Authorization: Bearer ACCESS_TOKEN` de um
-usuário autenticado; `/health` é público. GETs retornam JSON e POSTs recebem
-JSON quando há corpo. Operações sem conteúdo podem responder sem corpo, como
-envio de mensagem e aceite de amizade (204). Dados inválidos, recursos ausentes
-e conflitos são tratados sem encerrar os serviços. Erros de negócio têm
-`code` e `message`, com HTTP 400, 403, 404, 409 ou 503 conforme o caso.
+### Proxy e Supabase Auth
 
-O frontend também serve `/config` (apenas configuração pública) e `/status`
-(disponibilidade dos dois backends), além dos arquivos em `/assets/`.
+Na porta **5173**, `/` e `/assets/...` servem a interface; `/config` expõe apenas
+URL/chave pública; `/status` consulta health das APIs. `/writer/api/...` encaminha
+rotas permitidas ao Java; `/reader/api/...`, ao Python, mantendo Bearer. Esses
+prefixos não existem nas APIs diretas. Login/cadastro/renovação/logout usam
+`SUPABASE_URL/auth/v1/...`, não endpoints Java/Python de login.
 
-`GET /api/users` exige o parâmetro de consulta `name` (pelo menos dois
-caracteres). As consultas de mensagens aceitam `before` para paginação.
+## Problemas comuns
 
-## Testes
+| Sintoma | O que conferir |
+| --- | --- |
+| Porta ocupada | Encerre a instância anterior no terminal; mantenha portas diferentes para os três processos. `--port 5174` troca somente a porta do site. |
+| `Flask` ou `jwt` ausente | Use o Python da `.venv` e instale os dois arquivos de requisitos da primeira instalação. |
+| Certificado ausente ou falha TLS | Confira o PEM e `SUPABASE_DB_SSLROOTCERT`; mantenha a validação do certificado. |
+| Erro de conexão ou permissão no banco | Confira host/usuário do Session pooler, senha da role, internet e migrações até V011. Use `check_supabase.py --all --model` e `reader.py check`. |
+| Login rejeitado | Confira email confirmado, Project URL, chave pública e assinatura ES256/RS256 no Auth. |
+| HTTP 401 ou 403 | 401 indica token ausente/inválido; 403 pode indicar falta de participação ou de permissão para a ação. |
+| Inicialização excede o tempo | Confira os logs; no primeiro download do Gradle, use `--timeout 600`. |
 
-Na raiz, no Windows:
+## Testes e limites
+
+Windows/PowerShell, na raiz do projeto:
 
 ```powershell
+npm.cmd --prefix frontend test
 .\.venv\Scripts\python.exe -m unittest discover -s scripts/tests -v
-.\.venv\Scripts\python.exe scripts/writer.py test
+.\.venv\Scripts\python.exe scripts/writer.py build
 ```
 
-No Linux, substitua `.\.venv\Scripts\python.exe` por `.venv/bin/python`.
-Os testes Java comuns não exigem o banco. Para integração real, configure
-também as credenciais administrativas, de migração e leitura e execute
-`scripts/writer.py integration` com o Python do `.venv`. Esse teste cria e remove
-um schema temporário; ele não aplica migrações ao schema usado pela aplicação.
+No Linux use `npm` e `.venv/bin/python`. Os testes Node não precisam de `npm ci`;
+para Playwright instale `npm.cmd --prefix frontend ci`. Os cenários em
+`frontend/e2e` usam respostas simuladas e não provam integração real das APIs.
 
-Para os testes opcionais da interface, instale Node.js e, na pasta `frontend`:
+`scripts/writer.py integration` cria/remove schema temporário e usa as quatro
+credenciais PostgreSQL (admin, migrador, writer, reader). Execute **somente em
+banco de teste confirmado como isolado**, com roles/CA preparados; não use banco
+compartilhado. Os testes compilam no build comum, mas são ignorados sem
+`GAMBLR_IT=true`. `scripts/test_database_schema.py` também exige ambiente isolado
+e schema sem tabelas, apesar de executar rollback. Não use como migração.
 
-```powershell
-npm.cmd ci
-npm.cmd test
-.\node_modules\.bin\playwright.cmd test
-```
-
-No Linux, use `npm ci`, `npm test` e `npx playwright test`. Os testes de navegador
-exigem o site iniciado e Microsoft Edge instalado, conforme a configuração de
-`frontend/playwright.config.js`. Eles simulam as respostas dos backends.
+Regras e modelo: [requisitos](docs/requisitos.md) e [modelo](docs/modelo-de-dados.md).
 
 ## Arquivos de entrega
 
 Repositório: https://github.com/SenhorMarco/gamblr
 
 Mantenha o repositório público ou compartilhado com o professor até a correção.
-A equipe completa os integrantes, o link público do vídeo e a divisão do
-trabalho antes da entrega. A revisão de organização está em
+A equipe completa o link público do vídeo e a divisão do trabalho antes da entrega. A revisão de organização está em
 [conferência do enunciado](docs/conformidade-enunciado.md).
 
 O `.gitignore` exclui `.env`, certificados locais, ambientes virtuais, caches,
@@ -330,14 +428,10 @@ necessários para compilar a API Java e fazem parte da entrega.
 
 ## Documentação complementar
 
-- [Requisitos do produto](docs/requisitos.md)
-- [Execução local e rede](docs/execucao-local.md)
-- [Banco e migrações](docs/banco-de-dados.md)
-- [Modelo de dados](docs/modelo-de-dados.md)
-- [Supabase](docs/supabase.md) e [autenticação](docs/supabase-auth.md)
-- [API Java](docs/writer.md) e [API Python](docs/reader.md)
+- Operação: [execução local](docs/execucao-local.md), [Supabase](docs/supabase.md),
+  [banco e migrações](docs/banco-de-dados.md) e [autenticação](docs/supabase-auth.md).
+- Componentes: [Java](docs/writer.md), [Python](docs/reader.md) e [frontend](docs/frontend.md).
+- Funcionalidades: [chats](docs/chats.md), [administração](docs/administracao.md),
+  [resultados](docs/resultados.md) e [personalização](docs/personalizacao.md).
+
 - [Catálogo completo dos endpoints: finalidade, entrada, resposta e permissões](docs/endpoints.md)
-- [Interface](docs/frontend.md) e [layout lateral](docs/layout-lateral.md)
-- [Demonstração com duas contas](docs/demonstracao.md)
-- [Chats](docs/chats.md), [administração](docs/administracao.md),
-  [resultados](docs/resultados.md) e [personalização](docs/personalizacao.md)

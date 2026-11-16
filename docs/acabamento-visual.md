@@ -26,7 +26,7 @@ e ações. Essa regra está em
 As cores de nome e título escolhidas pelos integrantes são preservadas.
 Rótulos de ações, preços, regras e mensagens financeiras mantêm seu conteúdo.
 O design utiliza CSS e JavaScript nativos, sem dependências adicionais.
-Veja também [layout lateral](layout-lateral.md).
+Veja também [interface](frontend.md).
 
 ## Verificação
 

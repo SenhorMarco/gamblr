@@ -3,7 +3,7 @@
 Consulte o [catálogo de endpoints](endpoints.md) para a finalidade, os parâmetros,
 as respostas e as permissões de cada rota Java e Python.
 
-O serviço `services/reader` oferece ranking e odds. Ele valida os tokens do
+O serviço `services/reader` oferece ranking, participação e odds. Ele valida os tokens do
 Supabase Auth e usa somente a credencial `gamblr_reader`. O Spring continua
 responsável pelas escritas; o Flask consulta as views depois dos commits.
 
@@ -15,30 +15,24 @@ usa o mesmo snapshot de leitura para autorização e agregados. Não retorna
 identidades, escolhas ou valores individuais. Os detalhes de interface estão
 em [frontend](frontend.md#apostas-ranking-e-estados-vazios-rf-41-a-rf-43).
 
-Na versão atual, aplique também V007–V011 antes de iniciar o serviço. A V011
-acrescenta `nameColor`, `title` e `titleColor` ao ranking, e a verificação de
-inicialização exige essas colunas. Veja [personalização](personalizacao.md#ativar).
+## 1. Preparar o banco até V011
 
-## 1. Aplicar a V006
-
-Após V001–V005, execute o arquivo completo
-[`V006__reader_membership_identity.sql`](../database/migrations/V006__reader_membership_identity.sql)
-no SQL Editor como `postgres`.
-
-A migração acrescenta `issuer` e `subject` à view `current_group_members`, para
-relacionar o JWT ao integrante atual. Não cria tabelas e não concede acesso
-direto a `user_identities`, `predictions` ou outras tabelas privadas. O banco
-continua com **11 tabelas e 3 views**. As migrações anteriores não devem ser repetidas.
+Siga a [primeira instalação](../README.md#primeira-instalação). Todas as migrações
+V001–V011 são necessárias. A V006 acrescenta emissor/subject à view
+`current_group_members` para autorização. A V011 acrescenta `nameColor`, `title`
+e `titleColor` ao ranking; a verificação de inicialização exige essas colunas.
+Não há acesso direto a `user_identities`, `predictions` ou outras tabelas privadas.
 
 ## 2. Dependências e configuração
 
-Da raiz do projeto:
+Windows/PowerShell, na raiz do projeto:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r services/reader/requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r scripts/requirements.txt -r services/reader/requirements.txt
 ```
 
-As dependências já foram instaladas neste ambiente. O serviço reutiliza as
+Crie antes a `.venv` e instale os dois arquivos de requisitos conforme o
+[README](../README.md#primeira-instalação). O serviço reutiliza as
 variáveis existentes no `.env`: `SUPABASE_URL`, host/porta/nome do banco,
 certificado CA, `GAMBLR_READ_DB_USER` e `GAMBLR_READ_DB_PASSWORD`. Sua porta
 padrão é 5000; para mudar, acrescente `GAMBLR_READER_PORT=5000` com outro valor.
@@ -68,8 +62,7 @@ conexão/conta/views não possam ser verificadas. Usa TLS com certificado e host
 validados. Debug e reloader ficam desativados.
 
 `GAMBLR_BIND_ADDRESS=0.0.0.0` permite escutar na rede local, assim como no Spring.
-O lançador usa o servidor Flask para o protótipo; hospedagem definitiva ainda não
-foi definida. O [frontend temporário](frontend.md) acessa os serviços por um proxy
+O lançador usa o servidor Flask para execução local. O [frontend](frontend.md) acessa os serviços por um proxy
 de mesma origem, sem exigir configuração de CORS entre portas no navegador.
 
 ## Endpoints
@@ -78,9 +71,10 @@ de mesma origem, sem exigir configuração de CORS entre portas no navegador.
 | --- | --- |
 | `GET /health` | Estado do processo HTTP, sem autenticação e sem consulta ao banco |
 | `GET /api/groups/{id}/ranking` | Ranking de integrantes atuais por saldo disponível |
+| `GET /api/groups/{id}/participation` | Votos agregados de todas as apostas do grupo |
 | `GET /api/bets/{id}/odds` | Votos e odds agregados por opção |
 
-Envie `Authorization: Bearer ACCESS_TOKEN` nos dois endpoints de negócio. A API
+Envie `Authorization: Bearer ACCESS_TOKEN` nos três endpoints de negócio. A API
 valida assinatura ES256/RS256, emissor do projeto, audiência/papel `authenticated`,
 validade e subject. Depois, verifica o vínculo de identidade e a participação
 atual no grupo. Um token válido de usuário externo ao grupo recebe `403`.
@@ -98,8 +92,8 @@ Exemplo de ranking:
 {
   "groupId": "UUID_DO_GRUPO",
   "ranking": [
-    {"position": 1, "userId": "UUID_AUTOR", "displayName": "Autor", "availablePoints": "100"},
-    {"position": 2, "userId": "UUID_PARTICIPANTE", "displayName": "Participante", "availablePoints": "70"}
+    {"position": 1, "userId": "UUID_AUTOR", "displayName": "Autor", "availablePoints": "100", "nameColor": null, "title": null, "titleColor": null},
+    {"position": 2, "userId": "UUID_PARTICIPANTE", "displayName": "Participante", "availablePoints": "70", "nameColor": null, "title": null, "titleColor": null}
   ]
 }
 ```
@@ -115,16 +109,17 @@ Exemplo de opção nas odds:
 ```
 
 A resposta completa inclui `betId`, `groupId`, `totalVotes` e `options`. Opção
-sem votos tem `decimalOdds: null`, a ser exibida como “—”. A formatação da odd usa
-duas casas decimais; a odd é calculada por **contagem de votos**, sem usar o valor
-apostado. Não retornamos escolhas individuais ou valores dos palpites. Os votos
+sem pontos tem `decimalOdds: null`, a ser exibida como “—”. A formatação da odd usa
+duas casas decimais; desde V010 a odd é **total de pontos da aposta dividido
+pelos pontos da opção**. A contagem de votos é independente da odd. Não retornamos
+escolhas individuais ou valores dos palpites. Os votos
 de ex-integrantes permanecem nos agregados, conforme RF-19.
 
 As odds podem ser consultadas por integrantes mesmo sem terem apostado. O
 endpoint também mantém os agregados de apostas encerradas disponíveis aos
-integrantes; a interface deverá indicar o estado/prazo a partir da proposta
+integrantes; a interface indica o estado/prazo a partir da proposta
 consultada no Spring. Esses números não são uma promessa de pagamento: a
-distribuição continua seguindo o RF-07 e ainda precisa de implementação.
+distribuição segue o RF-07 e está implementada no Java; veja [resultados](resultados.md).
 
 ## Consultar com uma conta real
 
@@ -146,8 +141,8 @@ Para acompanhar mudanças:
 
 O cliente consulta a cada 2 segundos e imprime somente mudanças. Cada resposta
 consulta o PostgreSQL, sem cache de dados (`Cache-Control: no-store`). Este é o
-mecanismo de atualização deste cliente; o frontend temporário consulta a cada
-5 segundos. Não há WebSocket/SSE.
+mecanismo deste cliente de terminal; o frontend usa long polling para odds,
+conforme descrito abaixo. Não há WebSocket/SSE.
 Encerre com `Ctrl+C`. A sessão de consulta é encerrada ao final. Se o token
 expirar, execute novamente o comando para fazer novo login; renovação automática
 no cliente ainda não está implementada.
@@ -163,23 +158,24 @@ odd `1.00`, 0 votos em Não e odd `null`; ranking com autor 100 e participante 7
 .\.venv\Scripts\python.exe scripts/writer.py integration
 ```
 
-O teste de integração cria dados pelo Spring e consulta o Flask com a credencial
+Execute integração somente em banco isolado, com as quatro credenciais e CA
+configurados; não use banco compartilhado. O teste cria dados pelo Spring e
+consulta o Flask com a credencial
 real de leitura em schema temporário. Verifica 2 votos vencedores de um total de
-5, odd `2.50`, opção sem votos, ranking/desempate, rejeição de usuário externo,
+5, odds por pontos `3.00` e `1.50`, opção sem pontos, ranking/desempate,
+rejeição de usuário externo,
 preservação dos votos após saída e ausência de permissões para tabelas privadas
 ou escritas. As credenciais administrativas só são usadas pelo teste para
 preparar/remover seu schema; o serviço Flask não as utiliza.
 
-Nenhuma migração foi aplicada automaticamente ao schema de domínio pelo teste.
+Os testes não aplicam migrações ao schema de domínio.
 
 ## Odds por pontos (V010)
 
-Aplique `database/migrations/V010__point_based_odds.sql` após V009 no Supabase.
-A odd passa a ser total de pontos dividido pelos pontos da opção. Sem pontos,
+A V010 define a odd como total de pontos dividido pelos pontos da opção. Sem pontos,
 a odd é nula. Votos continuam sendo uma contagem separada. A barra contínua da interface
 mostra a proporção de pessoas por opção (votos da opção / total de votos),
 independentemente do valor apostado. As odds continuam calculadas por pontos.
-Recarregue a página após atualizar os arquivos.
 
 ## Atualização contínua (RF-13)
 

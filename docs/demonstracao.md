@@ -2,12 +2,13 @@
 
 Este roteiro usa duas contas do Supabase Auth e as APIs do Spring Boot. O fluxo
 termina com o palpite confirmado e os pontos reservados. Depois, use os IDs
-exibidos para consultar [ranking e odds no Flask](reader.md). Resultado e
-distribuição dos pontos são etapas posteriores.
+exibidos para consultar [ranking e odds no Flask](reader.md). O ciclo de resultado e
+distribuição dos pontos é descrito em [resultados](resultados.md) e não faz parte
+deste roteiro de terminal.
 
 ## Preparar
 
-1. As migrações V001–V005 devem estar aplicadas no projeto.
+1. As migrações V001–V011 devem estar aplicadas no projeto.
 2. O `.env` deve conter a configuração já validada do banco e do Supabase Auth.
 3. Tenha **duas contas diferentes** confirmadas no Supabase Auth. A primeira é o
    autor; a segunda é o participante. Se necessário, crie outra conta em
@@ -20,8 +21,8 @@ distribuição dos pontos são etapas posteriores.
 
 Se o serviço já estiver em execução na porta configurada, use a instância existente.
 O roteiro acessa `127.0.0.1` na porta `GAMBLR_WRITER_PORT` do `.env` (padrão 8080).
-Execute-o na máquina anfitriã. A demonstração em computadores distintos na rede
-local ainda depende da interface ou de um cliente que acesse o anfitrião.
+Execute-o na máquina anfitriã. Para usar computadores distintos na rede local,
+acesse a interface pelo endereço da máquina anfitriã.
 
 ## Executar
 
@@ -51,26 +52,20 @@ O script executa e confere estas operações:
 12. Encerra as duas sessões de teste no Auth ao final, inclusive em caso de falha.
 
 Os valores e a pergunta são exemplos do roteiro, sem alterar as regras do produto.
-As configurações de crédito diário e prazo de apuração/contestação também são
-apenas dados do grupo; esses processamentos ainda não foram implementados.
 
-## Resultado esperado
+## Resultado esperado e persistência
 
-Além dos IDs do grupo, da aposta e do palpite, o terminal mostra:
+O terminal informa os IDs do grupo, da aposta e do palpite e confere a rejeição
+do palpite do autor e do palpite duplicado, além dos saldos 100/0 e 70/30.
+O script contém uma mensagem final desatualizada sobre resultado e pagamento;
+o escopo dele termina na reserva, mas a aplicação oferece ambos pelo Java e
+pela interface, conforme [resultados](resultados.md).
 
-```text
-Autor impedido de palpitar na propria aposta: OK.
-Segundo usuario entrou apos a publicacao da aposta.
-Palpite duplicado rejeitado sem nova reserva: OK.
-Participante: 100 -> 70 pontos disponiveis; 0 -> 30 pontos reservados.
-Autor: 100 pontos disponiveis; 0 pontos reservados.
-Demonstracao validada ate a reserva. Resultado e pagamento ainda nao implementados.
-```
-
-Os registros da demonstração ficam salvos em `gamblr`. Uma nova execução cria
-outro grupo e outra aposta; os saldos são independentes por grupo. Os 30 pontos
-continuam reservados: esta etapa ainda não implementa cancelamento, apuração ou
-devolução automática após os prazos. Encerrar a sessão do Auth não desfaz o palpite.
+Os registros ficam salvos em `gamblr`; execute o roteiro em um projeto de
+desenvolvimento isolado. Cada execução cria outro grupo e outra aposta.
+Os pontos permanecem reservados até a conclusão da aposta, por apuração ou
+cancelamento. Encerrar a sessão do Auth não desfaz o palpite. O processamento
+automático depende de o Java permanecer em execução.
 
 Se houver erro de rede depois de uma escrita, não repita a confirmação cegamente.
 O script não faz tentativas automáticas. Guarde os IDs já exibidos e confira o
@@ -78,6 +73,9 @@ estado do palpite e da carteira antes de repetir a operação. Não envie tokens
 ou senhas ao relatar um erro.
 
 ## Verificação automatizada
+
+Comandos Windows/PowerShell, na raiz. Execute integração somente em banco
+isolado, conforme [writer](writer.md#testes-de-integração-no-postgresql-real).
 
 Os testes Python conferem a orquestração e os caminhos de erro, incluindo contas
 iguais, divergência de saldo e encerramento da primeira sessão se o segundo login
@@ -95,5 +93,6 @@ pelo emissor local de teste. Execute pelo comando existente:
 .\.venv\Scripts\python.exe scripts/writer.py integration
 ```
 
-Esse teste automatizado não usa nem cria contas reais no Supabase Auth. A execução
-interativa acima valida a integração com as duas contas reais, no ambiente do projeto.
+Esse teste automatizado não usa nem cria contas reais no Supabase Auth. O roteiro
+interativo exercita o login real e as operações de publicação e reserva; não cobre
+todo o ciclo de apuração.

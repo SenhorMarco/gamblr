@@ -1,5 +1,7 @@
 # Iniciar os serviços locais
 
+Para uma máquina nova, siga primeiro a [instalação no README](../README.md#primeira-instalação).
+
 Com o `.venv`, o `.env`, o JDK e as migrações até V011 já preparados, abra um
 PowerShell na raiz do projeto e execute:
 
@@ -55,18 +57,15 @@ Também é possível executar diretamente o supervisor Python, com as mesmas op�
 
 ## Linux
 
-Instale Python 3 com suporte a `venv` e um JDK 21 ou superior. No Ubuntu/Debian,
-por exemplo: `sudo apt install python3-venv openjdk-21-jdk`.
-Na raiz do projeto, prepare o ambiente:
+Com Python 3.13, JDK 21 e a primeira instalação concluída, execute na raiz
+em um terminal Bash:
 
 ```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r scripts/requirements.txt -r services/reader/requirements.txt
 ./iniciar.sh
 ```
 
 Um ambiente virtual criado no Windows não pode ser reutilizado no Linux;
-recrie o `.venv` nesse sistema. Configure o `.env` e o certificado CA conforme
+crie a `.venv` nesse sistema seguindo o README. Configure o `.env` e o certificado CA conforme
 [configuração do Supabase](supabase.md), usando caminhos Linux para arquivos.
 As migrações até V011 precisam estar aplicadas antes da inicialização.
 O primeiro uso do Gradle requer acesso à internet para baixar suas dependências.

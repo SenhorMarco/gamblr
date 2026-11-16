@@ -37,35 +37,35 @@ acesso. Para essa conexão PostgreSQL, não precisamos de `anon`, `publishable` 
 Na raiz do repositório, execute uma única vez no PowerShell:
 
 ```powershell
-Copy-Item -LiteralPath .env.example -Destination .env
+if (-not (Test-Path -LiteralPath .env)) { Copy-Item -LiteralPath .env.example -Destination .env }
 ```
 
 Se `.env` já existir, edite-o sem sobrescrever os valores existentes. Preencha os
-campos com os dados do painel e a senha do banco; mantenha `SUPABASE_DB_SSLMODE=require`.
+campos com os dados do painel e a senha do banco; use `SUPABASE_DB_SSLMODE=verify-full`.
 Não envie a senha pelo chat. `.env` está no `.gitignore`; `.env.example` é o modelo
 versionável e deve continuar sem credenciais reais.
 
-O arquivo é apenas uma configuração preparada para a integração: Spring Boot,
-Flask e PowerShell não o carregarão automaticamente sem configuração adicional.
+Os lançadores em `scripts/` carregam esse arquivo. Spring Boot iniciado diretamente
+pelo Gradle/IDE e o PowerShell não o carregam automaticamente.
 Guarde a senha como valor separado. Se depois montar uma URI PostgreSQL, caracteres
 reservados da senha precisam de percent-encoding; não aplique esse encoding ao
 valor separado da senha.
 
 ## 4. Acesso aos dados
 
-A divisão técnica inicial é Spring Boot para escritas e Flask para consultas de
-ranking e odds. As conexões PostgreSQL ficam nos backends.
+Spring Boot executa operações de domínio; Flask consulta ranking, participação
+e odds. As conexões PostgreSQL ficam nos backends.
 
 Para esse uso, a Data API não é necessária: no painel, abra a visão geral da
 integração **Data API** e desative **Enable Data API**. Faça isso no projeto de
 desenvolvimento do Gamblr; se estiver reaproveitando um projeto com outras
 aplicações, confira primeiro se elas dependem dessa API.
 
-Antes de conectar os serviços, criaremos credenciais distintas: uma para migrações,
+Antes de conectar os serviços, crie credenciais distintas: uma para migrações,
 uma para escrita e outra para leitura. O usuário administrativo desta configuração
 inicial não será a credencial de execução dos serviços. As permissões de leitura
-devem respeitar a privacidade dos palpites (RF-14), e os endpoints também precisarão
-autorizar o acesso por membro do grupo.
+respeitam a privacidade dos palpites (RF-14), e os endpoints autorizam o acesso
+por membro atual do grupo.
 
 ## 5. Validar
 
@@ -83,7 +83,7 @@ da máquina anfitriã. Para testar usando o `.env`, execute na raiz do projeto:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r scripts/requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r scripts/requirements.txt -r services/reader/requirements.txt
 .\.venv\Scripts\python.exe scripts/check_supabase.py
 ```
 
@@ -97,10 +97,11 @@ O arquivo `.env` é lido sem expansão de variáveis `${...}` da senha. Não é
 necessário ativar o ambiente virtual no PowerShell.
 
 Alternativamente, se tiver o cliente `psql` instalado, valide a conexão no
-PowerShell, substituindo somente host e usuário pelos valores do painel:
+PowerShell, na raiz, após salvar o CA conforme a seção abaixo. Substitua host
+e usuário pelos valores do painel:
 
 ```powershell
-psql "host=HOST_DO_PAINEL port=5432 dbname=postgres user=postgres.PROJECT_REF sslmode=require connect_timeout=10" -W -c "\conninfo" -c "select current_database(), current_user;"
+psql "host=HOST_DO_PAINEL port=5432 dbname=postgres user=postgres.PROJECT_REF sslmode=verify-full sslrootcert=certs/supabase-ca.crt connect_timeout=10" -W -c "\conninfo" -c "select current_database(), current_user;"
 ```
 
 O parâmetro `-W` solicita a senha interativamente. O resultado esperado é o banco
@@ -110,7 +111,11 @@ não são necessários para estes passos.
 Para erros de conexão, confira: projeto ativo, host e usuário do Session pooler,
 senha do banco, porta, SSL e eventuais restrições de rede configuradas no projeto.
 
-### Falha na validação do certificado TLS
+### Certificado obrigatório para os serviços
+
+Os lançadores Java e Flask exigem `SUPABASE_DB_SSLROOTCERT` apontando para um
+arquivo existente. O verificador de conexão isolado pode usar as CAs do sistema,
+mas isso não substitui a configuração exigida pelos serviços.
 
 O verificador valida o certificado e o hostname mesmo quando o `.env` usa
 `require` (a validação estrita corresponde a `verify-full`). Se a autoridade
@@ -130,7 +135,7 @@ sistema e mantém a validação do hostname. A pasta `certs` é local e está ig
 pelo Git. Se o erro persistir, confira a nova mensagem; VPN ou proxy podem
 interferir na conexão, mas a presença da VPN por si só não comprova a causa.
 
-## Próxima etapa e decisões em aberto
+## Banco e serviços
 
 Após validar o acesso, siga [Banco de dados: permissões e migrações](banco-de-dados.md).
 Os scripts iniciais de roles e permissões estão preparados no repositório para
@@ -138,10 +143,10 @@ execução manual, junto com as migrações das tabelas e views. A conexão do S
 está descrita em [writer.md](writer.md); a do Flask em [reader.md](reader.md).
 
 A autenticação escolhida é [Supabase Auth](supabase-auth.md).
-Os instantes do domínio serão representados com fuso (`timestamptz`); o crédito
-diário deverá seguir `America/Sao_Paulo`, conforme RF-02, independentemente do
+Os instantes do domínio usam fuso (`timestamptz`); o crédito
+diário segue `America/Sao_Paulo`, conforme RF-02, independentemente do
 fuso exibido na sessão. Cores e títulos por pontos exigem a V011, conforme
-[personalização](personalizacao.md). Outros prêmios internos permanecem em aberto.
+[personalização](personalizacao.md). Os prêmios disponíveis são cores e títulos por pontos.
 
 ## Referências oficiais
 

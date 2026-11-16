@@ -2,30 +2,17 @@
 
 O Spring implementa o ciclo de apuração, contestação, cancelamento, devolução e
 pagamento. As regras são as de [requisitos.md](requisitos.md); odds continuam sendo
-calculadas pelo Flask por quantidade de votos, independentemente do pagamento.
+calculadas pelo Flask por pontos apostados. Votos contam pessoas separadamente.
 
 ## Ativar
 
-1. Com V001–V007 já aplicadas, execute o arquivo completo
-   [V008__bet_resolution.sql](../database/migrations/V008__bet_resolution.sql)
-   no SQL Editor do Supabase como `postgres`. A migração adiciona o motivo da
-   conclusão e o registro de saídas do grupo, com RLS e permissões já configuradas.
-   Não execute novamente as migrações anteriores.
-2. Reinicie o Spring e o servidor do frontend, parando as instâncias anteriores
-   com Ctrl+C antes de iniciar:
+Prepare todas as migrações **V001–V011**, em ordem, conforme o
+[README](../README.md#configuração-de-ambiente-banco-e-autenticação).
+A V008 acrescenta o motivo da conclusão e o registro de saídas. A V010 define
+odds por pontos e a V011 acrescenta personalizações ao ranking.
+Após atualizar um ambiente, pare as instâncias anteriores, reinicie os serviços
+conforme [execução local](execucao-local.md) e recarregue o navegador.
 
-   ```powershell
-   .\.venv\Scripts\python.exe scripts/writer.py bootRun
-   ```
-
-   ```powershell
-   .\.venv\Scripts\python.exe scripts/frontend.py
-   ```
-
-3. Recarregue o site. O Flask de ranking e odds pode continuar em execução.
-
-A aplicação não aplica migrações automaticamente. A V008 só foi aplicada pelos
-testes a um schema temporário, não ao schema `gamblr` do ambiente existente.
 
 ## Testar pela interface
 
@@ -76,7 +63,7 @@ somente nos primeiros 10% da duração. Os pontos são devolvidos integralmente.
 - A saída de quem contestou retira sua contestação pendente, preservando o palpite.
   Se era a última pendente, o sistema aguarda o fim do prazo ou conclui no próximo
   processamento caso o prazo já tenha terminado. As carteiras de ex-integrantes
-  também recebem ganhos e devoluções. A interface de saída/remoção ainda não existe.
+  também recebem ganhos e devoluções. As ações de saída/remoção estão em Gerenciar grupo.
 - A migração registra as saídas atualmente conhecidas em `left_at`. Saídas e
   retornos anteriores à V008 cujo histórico já foi sobrescrito não são reconstruídos.
 
@@ -91,10 +78,10 @@ crédito = valor apostado + floor(pontos perdidos × valor apostado / total apos
 A parcela é arredondada para baixo em pontos inteiros; a sobra não é distribuída.
 O valor apostado original, inclusive frações, é recuperado integralmente. No
 exemplo dos requisitos, vencedores com 10 e 30 pontos e perdedores com 80 no total
-recebem créditos de 30 e 90. A odd decimal por votos não é usada nessa conta.
+recebem créditos de 30 e 90. O cálculo usa os pontos apostados; a odd exibida é arredondada para duas casas.
 
 Sem palpites na opção vencedora, os pontos perdidos não são distribuídos. Conforme
-a decisão confirmada no RF-07, se os vencedores apostaram apenas zero pontos,
+o RF-07, se os vencedores apostaram apenas zero pontos,
 também não há distribuição: recebem zero e os perdedores perdem os pontos reservados.
 
 Cada conclusão bloqueia a aposta e as carteiras em ordem estável e grava, na mesma
@@ -120,6 +107,9 @@ cancelamento concluído é rejeitado sem nova movimentação.
 
 ## Verificação
 
+Comandos Windows/PowerShell, na raiz. A integração exige banco isolado;
+veja [testes e limites](../README.md#testes-e-limites).
+
 Os testes Java usam relógio controlado, HTTP autenticado e PostgreSQL real em schema
 temporário. Cobrem permissões, prazos, decisões antes/depois do prazo, nova contestação,
 saídas/retornos, rateio, arredondamento, falta de vencedores, palpites de zero,
@@ -138,6 +128,5 @@ Com o frontend aberto, na pasta `frontend`:
 ```
 
 Crédito diário, convites e administração de membros foram acrescentados pela
-V009, conforme [administracao.md](administracao.md). A arquitetura definitiva do
-frontend permanece em aberto. Cores e títulos por pontos são acrescentados pela
-V011, conforme [personalização](personalizacao.md); outros prêmios permanecem em aberto.
+V009, conforme [administracao.md](administracao.md). Cores e títulos por pontos são acrescentados pela
+V011, conforme [personalização](personalizacao.md).

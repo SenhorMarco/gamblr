@@ -4,30 +4,16 @@ Mensagens persistem no Supabase e passam pelo Spring Boot, com a identidade
 obtida do JWT. O Flask continua responsável por ranking e odds. O frontend usa
 o mesmo proxy local e não acessa diretamente as tabelas de mensagens.
 
-## Ativar no ambiente existente
+## Ativar
 
-1. No SQL Editor do Supabase, como `postgres`, execute todo o conteúdo de
-   [V007__friendships_messages.sql](../database/migrations/V007__friendships_messages.sql),
-   incluindo `BEGIN`, `SET LOCAL ROLE` e `COMMIT`. As migrações V001–V006 devem
-   estar aplicadas. Não execute novamente as migrações anteriores.
-2. A V007 já habilita RLS nas três tabelas novas. As policies são exclusivas para
-   a conta técnica `gamblr_writer`; `anon`, `authenticated` e o reader não recebem
-   acesso. Mantenha o schema `gamblr` fora da Data API. A autorização por pessoa
-   e conversa é feita no Spring, que usa uma conta compartilhada de servidor.
-3. Pare e reinicie o Spring e o frontend nos respectivos terminais:
+Prepare todas as migrações **V001–V011**, em ordem, conforme o
+[README](../README.md#configuração-de-ambiente-banco-e-autenticação).
+A V007 cria amizades e mensagens, com RLS restrita à conta técnica do writer.
+O Spring verifica a autorização por pessoa e conversa; mantenha `gamblr` fora
+da Data API.
+Após atualizar um ambiente, pare as instâncias anteriores, reinicie os serviços
+conforme [execução local](execucao-local.md) e recarregue o navegador.
 
-   ```powershell
-   .\.venv\Scripts\python.exe scripts/writer.py bootRun
-   ```
-
-   ```powershell
-   .\.venv\Scripts\python.exe scripts/frontend.py
-   ```
-
-4. Recarregue a página. O serviço Flask de ranking/odds pode continuar em execução.
-
-Não há novas variáveis de ambiente ou dependências. A migração é aplicada
-manualmente, como as anteriores; os testes não a aplicam ao schema do projeto.
 
 ## Testar com duas contas
 
@@ -41,14 +27,14 @@ manualmente, como as anteriores; os testes não a aplicam ao schema do projeto.
 5. No **+** ao lado de **AMIGOS**, busque o nome da segunda pessoa e envie o pedido.
    A pessoa deve ter entrado no Gamblr ao menos uma vez para possuir perfil interno.
    A busca retorna até 20 perfis, com nome e código; não expõe emails.
-6. Na segunda sessão, aceite o pedido na coluna esquerda. Apenas o destinatário
+6. Na segunda sessão, aceite o pedido na área de amigos. Apenas o destinatário
    pode aceitar ou recusar. Um pedido cruzado não aceita automaticamente a amizade.
 7. Clique no amigo e troque mensagens privadas. A coluna de apostas fica oculta;
    uma terceira conta não tem acesso a essa conversa.
 8. Recarregue para conferir a persistência. Na rede local, utilize o endereço da
    máquina anfitriã, como descrito em [frontend.md](frontend.md).
 
-## Contratos e escolhas do protótipo
+## Contratos e limites
 
 - RF-31: leitura e envio exigem participação atual. O filtro usa `joined_at`
   da entrada atual; uma nova entrada estabelece um novo limite de histórico.
@@ -65,7 +51,7 @@ manualmente, como as anteriores; os testes não a aplicam ao schema do projeto.
 - RF-32: não existem endpoints de apostas em conversas privadas.
 - Mensagens e amizades atualizam a cada 3 segundos na aba visível. Não há
   WebSocket, presença online, anexos, edição, indicadores de leitura ou notificações
-  do sistema operacional nesta etapa.
+  do sistema operacional.
 - Cada página contém até 100 mensagens em ordem cronológica. **Mensagens
   anteriores** abre a página anterior; **Voltar às recentes** acompanha as novas.
   Enquanto uma página antiga está aberta, a atualização permanece nessa página.
@@ -74,8 +60,7 @@ manualmente, como as anteriores; os testes não a aplicam ao schema do projeto.
   Após falha de rede, repetir o mesmo texto na mesma conversa reutiliza essa chave
   enquanto a página estiver aberta; uma recarga descarta essa tentativa pendente.
 
-Esses limites são escolhas técnicas do protótipo. As decisões de produto ainda
-em aberto continuam no documento de requisitos.
+As regras funcionais estão em [requisitos](requisitos.md).
 
 ## Endpoints autenticados do Spring
 
@@ -96,7 +81,10 @@ não aceita esses valores como identificação fornecida pelo cliente.
 
 ## Verificação
 
-Os testes de integração Java criam um schema temporário com V001–V007 e o
+Comandos Windows/PowerShell, na raiz. A integração exige banco isolado;
+veja [testes e limites](../README.md#testes-e-limites).
+
+Os testes de integração Java criam um schema temporário com V001–V011 e o
 removem ao terminar. Exercitam histórico anterior à entrada, retorno ao grupo,
 paginação, exclusão por moderação, replay de envio, aceite explícito e rejeição
 de terceiros. Conferem também que a conta do Flask não consegue ler mensagens.

@@ -10,6 +10,8 @@ __pycache__/
 
 # Certificados locais baixados do painel
 /certs/
+/setup/
+/setup.rar
 
 # Ferramentas e build Java locais
 /.tools/
