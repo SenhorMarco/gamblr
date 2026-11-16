@@ -1,11 +1,16 @@
 # Serviço de escrita: Spring Boot e Gradle
 
 O serviço em `services/writer` usa Spring Boot 4.1.2, Gradle Wrapper 9.9.1 e código
-compatível com Java 21+. O JDK 27 instalado nesta máquina é suportado pelo wrapper.
+compilado com `release=21`. Use JDK 21, verificado no build local. Não há matriz
+de testes para outros JDKs.
 Os scripts Gradle usam sintaxe Groovy (`build.gradle`). Não é necessário instalar
 Gradle globalmente. O primeiro build baixa a distribuição e as dependências.
 
-## 1. Aplicar a migração de identidades
+## 1. Preparar o banco até V011
+
+Em instalação nova, siga o [README](../README.md#primeira-instalação) para roles,
+certificado e V001–V011. O trecho abaixo explica a migração de identidades;
+V005 sozinha não prepara o schema completo exigido pelo código atual.
 
 Após V001–V004, execute o conteúdo completo de
 [`V005__external_identities.sql`](../database/migrations/V005__external_identities.sql)
@@ -67,11 +72,17 @@ usa um proxy local para acessar os dois serviços pelo navegador.
 
 ## Endpoints
 
+A lista abaixo cobre o fluxo básico. O [inventário completo no README](../README.md#endpoints)
+inclui os cinco controllers e suas exigências de autenticação/autorização.
+
 | Método e caminho | Operação |
 | --- | --- |
 | `GET /health` | Estado do processo HTTP, público |
 | `POST /api/me` | Provisionar perfil interno para o JWT validado; repetição retorna o perfil existente |
 | `POST /api/groups` | Criar grupo, dono/integrante, carteira e crédito inicial na mesma transação |
+| `GET /api/groups` | Listar meus grupos |
+| `GET /api/groups/public` | Descobrir grupos públicos |
+| `GET /api/groups/{id}/bets` | Listar apostas do grupo |
 | `POST /api/groups/{id}/members/me` | Entrar/retornar a grupo público de entrada imediata |
 | `GET /api/groups/{id}/wallet/me` | Consultar a própria carteira |
 | `POST /api/groups/{id}/bets` | Publicar aposta e suas opções na mesma transação |
@@ -142,17 +153,19 @@ duplicado mesmo em apostas diferentes. Aos 90% da duração, o servidor rejeita
 novos palpites, independentemente de um job de fechamento.
 
 A publicação copia os prazos do grupo. Não há endpoint de edição de aposta,
-opções ou palpite. Saída/remoção, transferência e apuração futuras devem respeitar
+opções ou palpite. Saída/remoção, transferência e apuração implementadas respeitam
 o protocolo de bloqueios e as regras documentadas em `requisitos.md`.
 
 O retorno ao grupo reutiliza a carteira e a primeira entrada; não concede outro
 crédito inicial. O endpoint de entrada implementa somente grupos públicos com
-entrada imediata; convites e aprovação de pedidos são etapas posteriores.
+entrada imediata; convites e aprovação de pedidos têm endpoints próprios
+implementados em [administração](administracao.md).
 
 ## Testes de integração no PostgreSQL real
 
-Execute da raiz, com as credenciais administrativas, de migração e de escrita no
-`.env`:
+Execute somente em banco de teste confirmado como isolado, nunca em banco
+compartilhado. Da raiz, configure credenciais administrativas, de migração,
+de escrita e de leitura e o certificado CA no `.env`:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/writer.py integration
@@ -175,7 +188,7 @@ e rollback integral se o registro de movimentação falhar. O emissor de teste n
 Também há um teste que executa o núcleo do roteiro Python pelo HTTP contra o
 Spring e o PostgreSQL temporário.
 
-## O que ainda falta
+## Funcionalidades complementares
 
 Chats de grupo e privados estão implementados em [chats.md](chats.md). O ciclo
 de resultado, contestação, decisão do dono, cancelamento e pagamento está em

@@ -6,8 +6,8 @@ nem build obrigatório para usar este protótipo.
 
 ## Iniciar
 
-As migrações até V009 devem estar aplicadas. Para administração e crédito diário,
-execute [V009](../database/migrations/V009__group_administration.sql) após V008.
+As migrações V001–V011 devem estar aplicadas, incluindo odds por pontos (V010)
+e personalização/ranking (V011). Siga a [primeira instalação](../README.md#primeira-instalação).
 Use o `.env` já configurado e contas confirmadas no Supabase Auth.
 
 Para iniciar os três serviços em um único terminal, na raiz:
@@ -72,8 +72,9 @@ contestação, decisão do dono, cancelamento e pagamento automático.
    **Entrar no grupo**. Não é necessário copiar IDs.
 6. Abra a aposta, escolha uma opção e confirme o valor. Com saldo inicial 100 e
    palpite de 30, a tela mostra **70 disponíveis e 30 reservados**.
-7. Acompanhe ranking e odds nas duas abas. As consultas atualizam a cada 5 segundos
-   enquanto a aba está visível. O botão ↻ atualiza imediatamente.
+7. Acompanhe ranking e odds nas duas abas. O ranking é consultado periodicamente;
+   odds usam long polling (até 15 segundos por consulta, verificações a cada 500 ms
+   no reader). Novas consultas pausam em abas ocultas. O botão ↻ atualiza imediatamente.
 
 O autor não pode confirmar palpites na própria aposta. Após confirmar, o
 participante vê sua escolha/valor e os controles ficam bloqueados. Os demais

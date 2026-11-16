@@ -37,16 +37,16 @@ acesso. Para essa conexão PostgreSQL, não precisamos de `anon`, `publishable` 
 Na raiz do repositório, execute uma única vez no PowerShell:
 
 ```powershell
-Copy-Item -LiteralPath .env.example -Destination .env
+if (-not (Test-Path -LiteralPath .env)) { Copy-Item -LiteralPath .env.example -Destination .env }
 ```
 
 Se `.env` já existir, edite-o sem sobrescrever os valores existentes. Preencha os
-campos com os dados do painel e a senha do banco; mantenha `SUPABASE_DB_SSLMODE=require`.
+campos com os dados do painel e a senha do banco; use `SUPABASE_DB_SSLMODE=verify-full`.
 Não envie a senha pelo chat. `.env` está no `.gitignore`; `.env.example` é o modelo
 versionável e deve continuar sem credenciais reais.
 
-O arquivo é apenas uma configuração preparada para a integração: Spring Boot,
-Flask e PowerShell não o carregarão automaticamente sem configuração adicional.
+Os lançadores em `scripts/` carregam esse arquivo. Spring Boot iniciado diretamente
+pelo Gradle/IDE e o PowerShell não o carregam automaticamente.
 Guarde a senha como valor separado. Se depois montar uma URI PostgreSQL, caracteres
 reservados da senha precisam de percent-encoding; não aplique esse encoding ao
 valor separado da senha.
@@ -61,11 +61,11 @@ integração **Data API** e desative **Enable Data API**. Faça isso no projeto 
 desenvolvimento do Gamblr; se estiver reaproveitando um projeto com outras
 aplicações, confira primeiro se elas dependem dessa API.
 
-Antes de conectar os serviços, criaremos credenciais distintas: uma para migrações,
+Antes de conectar os serviços, crie credenciais distintas: uma para migrações,
 uma para escrita e outra para leitura. O usuário administrativo desta configuração
 inicial não será a credencial de execução dos serviços. As permissões de leitura
-devem respeitar a privacidade dos palpites (RF-14), e os endpoints também precisarão
-autorizar o acesso por membro do grupo.
+respeitam a privacidade dos palpites (RF-14), e os endpoints autorizam o acesso
+por membro atual do grupo.
 
 ## 5. Validar
 
@@ -110,7 +110,11 @@ não são necessários para estes passos.
 Para erros de conexão, confira: projeto ativo, host e usuário do Session pooler,
 senha do banco, porta, SSL e eventuais restrições de rede configuradas no projeto.
 
-### Falha na validação do certificado TLS
+### Certificado obrigatório para os serviços
+
+Os lançadores Java e Flask exigem `SUPABASE_DB_SSLROOTCERT` apontando para um
+arquivo existente. O verificador de conexão isolado pode usar as CAs do sistema,
+mas isso não substitui a configuração exigida pelos serviços.
 
 O verificador valida o certificado e o hostname mesmo quando o `.env` usa
 `require` (a validação estrita corresponde a `verify-full`). Se a autoridade
@@ -138,8 +142,8 @@ execução manual, junto com as migrações das tabelas e views. A conexão do S
 está descrita em [writer.md](writer.md); a do Flask em [reader.md](reader.md).
 
 A autenticação escolhida é [Supabase Auth](supabase-auth.md).
-Os instantes do domínio serão representados com fuso (`timestamptz`); o crédito
-diário deverá seguir `America/Sao_Paulo`, conforme RF-02, independentemente do
+Os instantes do domínio usam fuso (`timestamptz`); o crédito
+diário segue `America/Sao_Paulo`, conforme RF-02, independentemente do
 fuso exibido na sessão. Cores e títulos por pontos exigem a V011, conforme
 [personalização](personalizacao.md). Outros prêmios internos permanecem em aberto.
 

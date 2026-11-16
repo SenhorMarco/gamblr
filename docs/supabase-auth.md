@@ -1,6 +1,6 @@
 # Supabase Auth no Gamblr
 
-Decisão confirmada: cadastro/login serão gerenciados pelo Supabase Auth. O Spring
+Cadastro/login são gerenciados pelo Supabase Auth. O Spring
 valida o token de usuário e aplica as regras de grupos e apostas. O banco de domínio
 continua no schema privado `gamblr`; a Data API pode permanecer desativada.
 
@@ -20,8 +20,7 @@ SUPABASE_PUBLISHABLE_KEY=CHAVE_PUBLICA_DO_PAINEL
 Use a **Project URL** do projeto e a chave **publishable**, disponível em
 **Project Settings → API Keys**. O verificador também aceita uma chave pública
 `anon` legada. Nunca use `secret`/`service_role` nesse campo. Não sobrescreva o
-`.env` com o modelo. A URL foi preenchida neste ambiente a partir do identificador
-do projeto; a chave pública foi preenchida pelo usuário.
+`.env` com o modelo. Preencha a URL e a chave pública do seu projeto.
 
 O Spring deriva o issuer como `SUPABASE_URL/auth/v1` e busca as chaves públicas em
 `SUPABASE_URL/auth/v1/.well-known/jwks.json`. Deixe `GAMBLR_AUTH_ISSUER` vazio; se
@@ -32,9 +31,9 @@ Em **Authentication**, confira o provedor **Email** em **Sign In / Providers**.
 Nesta implementação inicial usamos email/senha. Login social, MFA e a interface
 de recuperação de senha ficam para outras etapas.
 
-O serviço aceita assinaturas assimétricas **ES256** e **RS256**. O projeto atual
-foi consultado e publica uma chave ES256; não foi necessário alterar nem rotacionar
-suas chaves. Em um projeto legado que só use HS256, prepare a migração para chaves
+O serviço aceita assinaturas assimétricas **ES256** e **RS256**. Confira as
+chaves do seu projeto com o verificador abaixo. Em um projeto legado que só use
+HS256, prepare a migração para chaves
 assimétricas pelo painel antes de usar esta implementação. Não exporte chaves privadas.
 
 ## Verificar sem criar conta
@@ -139,6 +138,7 @@ contas no Supabase Auth real.
 .\.venv\Scripts\python.exe -m unittest discover -s scripts/tests -v
 ```
 
+A integração requer banco isolado; veja os [limites dos testes](../README.md#testes-e-limites).
 O login real precisa ser executado pelo usuário em terminal interativo. Não envie
 email/senha nem tokens pelo chat.
 

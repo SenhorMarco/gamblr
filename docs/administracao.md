@@ -6,7 +6,7 @@ evento no histórico do chat, conforme o RF-23.
 
 ## Ativar
 
-1. Na branch `marco`, com V001–V008 já aplicadas, execute todo o conteúdo de
+1. Com V001–V008 já aplicadas, execute todo o conteúdo de
    [V009__group_administration.sql](../database/migrations/V009__group_administration.sql)
    no SQL Editor do Supabase como `postgres`. O arquivo já configura RLS e
    permissões. Não execute novamente as migrações anteriores.
