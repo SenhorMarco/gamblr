@@ -1,5 +1,8 @@
 # Serviço de consultas: Flask
 
+Consulte o [catálogo de endpoints](endpoints.md) para a finalidade, os parâmetros,
+as respostas e as permissões de cada rota Java e Python.
+
 O serviço `services/reader` oferece ranking e odds. Ele valida os tokens do
 Supabase Auth e usa somente a credencial `gamblr_reader`. O Spring continua
 responsável pelas escritas; o Flask consulta as views depois dos commits.

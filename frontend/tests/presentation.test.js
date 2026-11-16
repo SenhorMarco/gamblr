@@ -18,7 +18,7 @@ test('missing and inconsistent participation cannot masquerade as zero votes',()
 test('ranking shows personal position and gap without changing the server ordering',()=>{
   const rows=[{userId:'a',position:3,availablePoints:'100'},{userId:'me',position:4,availablePoints:'85'}];
   assert.equal(rankingMessage(rows,'me'),'Você está em 4º lugar, a 15 pontos do próximo colocado.');
-  assert.equal(rows[0].userId,'a');assert.match(rankingMessage([{userId:'me',position:1,availablePoints:'0'}],'me'),/Você lidera/);
+  assert.equal(rows[0].userId,'a');assert.match(rankingMessage([{userId:'me',position:1,availablePoints:'0'}],'me'),/Você está em 1º lugar/);
 });
 test('ranking handles ties and exact decimal balances beyond Number precision',()=>{
   const rows=[{userId:'a',position:1,availablePoints:'9007199254740993.0001'},{userId:'me',position:2,availablePoints:'9007199254740993.0000'}];

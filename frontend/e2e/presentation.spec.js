@@ -52,7 +52,7 @@ test('cards show all situations and live people shares in group and Feed; rankin
   f.votes=[2,2];await expect(card.locator('.participation-legend')).toContainText('Sim: 2 palpites · 50%',{timeout:10000});
   f.ranking[3].availablePoints='100';await page.locator('#refresh-button').click();await expect(page.locator('#ranking-summary')).toContainText('empatado em pontos');
   f.ranking=[{...f.ranking[3],position:1,availablePoints:'150'},...f.ranking.slice(0,3).map((row,i)=>({...row,position:i+2}))];
-  await page.locator('#refresh-button').click();await expect(page.locator('#ranking-summary')).toContainText('Você lidera o grupo');
+  await page.locator('#refresh-button').click();await expect(page.locator('#ranking-summary')).toContainText('Você está em 1º lugar');
   await page.screenshot({path:testInfo.outputPath('cards-ranking-desktop.png'),fullPage:true});
   await page.locator('#feed-button').click();
   await expect(page.locator('#feed-list .feed-bet-card')).toHaveCount(6);
@@ -67,10 +67,10 @@ test('cards show all situations and live people shares in group and Feed; rankin
 test('empty group guides publishing, authorized invitation and starting a conversation',async({page},testInfo)=>{
   const f=await workspace(page,{empty:true});
   await expect(page.locator('#bets-list .empty-illustration')).toBeVisible();
-  await page.locator('#bets-list').getByRole('button',{name:'Publique a primeira aposta'}).click();await expect(page.locator('#bet-dialog')).toBeVisible();await page.keyboard.press('Escape');
-  await page.locator('#bets-list').getByRole('button',{name:'Convide alguém para o grupo'}).click();await expect(page.locator('#invite-search')).toBeFocused();await page.keyboard.press('Escape');
+  await page.locator('#bets-list').getByRole('button',{name:'Publicar aposta'}).click();await expect(page.locator('#bet-dialog')).toBeVisible();await page.keyboard.press('Escape');
+  await page.locator('#bets-list').getByRole('button',{name:'Convidar integrante'}).click();await expect(page.locator('#invite-search')).toBeFocused();await page.keyboard.press('Escape');
   await page.locator('#group-thread').getByRole('button',{name:'Escrever mensagem'}).click();await expect(page.locator('#group-message')).toBeFocused();
-  await expect(page.locator('#ranking-list .podium')).toHaveCount(1);await expect(page.locator('#ranking-summary')).toContainText('Você lidera');
+  await expect(page.locator('#ranking-list .podium')).toHaveCount(1);await expect(page.locator('#ranking-summary')).toContainText('Você está em 1º lugar');
   await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
   await page.screenshot({path:testInfo.outputPath('empty-group-mobile.png'),fullPage:true});expect(f.errors).toEqual([]);
 });
@@ -81,7 +81,7 @@ test('failed loads offer retries and never claim zero participation or empty con
   await expect(card).toContainText('Participação indisponível');await expect(card).not.toContainText('Sem palpites');
   await expect(page.locator('#ranking-error .load-failure')).toBeVisible();await expect(page.locator('#ranking-summary')).toBeHidden();
   await expect(page.locator('#group-thread .load-failure')).toBeVisible();
-  await expect(page.locator('#bets-list').getByRole('button',{name:'Convide alguém para o grupo'})).toHaveCount(0);
+  await expect(page.locator('#bets-list').getByRole('button',{name:'Convidar integrante'})).toHaveCount(0);
   f.failParticipation=false;f.failRanking=false;f.failMessages=false;f.votes=[0,0];
   await page.locator('#refresh-button').click();
   await expect(card).toContainText('Sem palpites ainda');await expect(card.locator('.participation-segment')).toHaveCount(0);await expect(card.locator('.participation-legend')).not.toContainText('%');

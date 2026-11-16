@@ -76,7 +76,7 @@ function decimalDifference(above,mine) {
 }
 export function rankingMessage(rows,userId) {
   const mine=rows.find(row=>row.userId===userId);if(!mine)return 'Sua posição ainda não está disponível.';
-  if(Number(mine.position)===1)return 'Você está em 1º lugar. Você lidera o grupo!';
+  if(Number(mine.position)===1)return 'Você está em 1º lugar.';
   const above=rows.find(row=>Number(row.position)===Number(mine.position)-1);
   if(!above)return 'Sua posição ainda não está disponível.';
   try {

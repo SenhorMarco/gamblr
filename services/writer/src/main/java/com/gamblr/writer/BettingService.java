@@ -118,7 +118,6 @@ public class BettingService {
     @Transactional
     public BetView publish(UUID user, UUID group, Requests.Bet request) {
         locks.lock(group);
-        // Segura a configuracao do grupo enquanto captura o snapshot dos prazos.
         if (jdbc.query("SELECT id FROM groups WHERE id=? AND deleted_at IS NULL FOR SHARE", (rs, row) -> rs.getObject(1), group).isEmpty()) throw ApiError.missing();
         member(group, user);
         List<String> labels;

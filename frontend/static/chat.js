@@ -15,7 +15,7 @@ export function createChats({api,profile,onPrivate,onBet}) {
         const button=node('button','group-nav friend-nav'+(scope?.kind==='private'&&scope.id===friend.userId?' active':''));button.type='button';button.dataset.friend=friend.userId;
         button.append(node('span','avatar',friend.displayName.slice(0,1).toUpperCase()),node('span','',friend.displayName));button.onclick=()=>onPrivate(friend);fragment.append(button);
       } else {
-        const row=node('div','friend-request');row.append(node('strong','',friend.displayName),node('small','',friend.incoming?'Quer ser seu amigo':'Pedido enviado'));
+        const row=node('div','friend-request');row.append(node('strong','',friend.displayName),node('small','',friend.incoming?'Pedido de amizade':'Pedido enviado'));
         if(friend.incoming)for(const [action,label] of [['accept','Aceitar'],['decline','Recusar']]) {
           const button=node('button','button secondary',label);button.type='button';
           button.onclick=async()=>{button.disabled=true;const session=epoch;try{await api('writer',`/api/friendships/${friend.id}/${action}`,{method:'POST'});if(session===epoch)await refreshFriends();}catch(error){if(session===epoch){$('friends-error').textContent=error.message;visible('friends-error',true);}}finally{button.disabled=false;}};row.append(button);
@@ -23,7 +23,7 @@ export function createChats({api,profile,onPrivate,onBet}) {
         fragment.append(row);
       }
     }
-    if(!friends.length)fragment.append(node('p','sidebar-empty','Nenhuma amizade ainda. Use + para encontrar alguém pelo nome.'));
+    if(!friends.length)fragment.append(node('p','sidebar-empty','Nenhuma amizade cadastrada. Use + para pesquisar por nome.'));
     list.replaceChildren(fragment);
   }
   async function refreshFriends() {
@@ -64,7 +64,7 @@ export function createChats({api,profile,onPrivate,onBet}) {
           }
           fragment.append(row);
         }
-        if(!page.messages.length)fragment.append(emptyState({kind:'chat',title:before?'Nenhuma mensagem nesta página.':current.kind==='group'?'Nenhuma mensagem desde sua entrada.':'Nenhuma mensagem ainda. Diga olá!',description:before?'Volte para acompanhar as mensagens recentes.':current.kind==='group'?'Seu histórico começa na sua entrada. Que tal puxar um assunto?':'Pode começar com um olá. Esta conversa é só de vocês.',actions:[{label:before?'Voltar às recentes':'Escrever mensagem',run:()=>{if(before){current.before=null;current.key='';refresh();}else $(prefix+'-message').focus();}}]}));
+        if(!page.messages.length)fragment.append(emptyState({kind:'chat',title:before?'Nenhuma mensagem nesta página.':current.kind==='group'?'Nenhuma mensagem desde sua entrada.':'Nenhuma mensagem nesta conversa.',description:before?'Volte para acompanhar as mensagens recentes.':current.kind==='group'?'Seu histórico inclui apenas mensagens enviadas após sua entrada.':'Envie uma mensagem para iniciar a conversa.',actions:[{label:before?'Voltar às recentes':'Escrever mensagem',run:()=>{if(before){current.before=null;current.key='';refresh();}else $(prefix+'-message').focus();}}]}));
         thread.replaceChildren(fragment);if(bottom)thread.scrollTop=thread.scrollHeight;current.key=key;
       }
       $(prefix+'-message').disabled=false;$(prefix+'-send').disabled=!!current.sending;
@@ -111,7 +111,7 @@ export function createChats({api,profile,onPrivate,onBet}) {
     start(){active=true;epoch++;refreshFriends();},
     reset(){active=false;epoch++;scope=null;friends=[];friendsLoading=false;sidebar();for(const prefix of ['group','private']){$(prefix+'-thread').replaceChildren();$(prefix+'-message').value='';$(prefix+'-message').disabled=true;$(prefix+'-send').disabled=true;}},
     openGroup(group){open('group',group.id);},
-    openPrivate(friend){if(friend){$('private-chat-heading').textContent=friend.displayName;open('private',friend.userId);}else{pause();$('private-chat-heading').textContent='Mensagens privadas';$('private-thread').replaceChildren(emptyState({kind:'chat',title:'Uma conversa começa com um olá.',description:'Selecione um amigo à esquerda. O chat fica disponível após o aceite da amizade.',actions:[{label:'Encontrar pessoas',run:()=>$('add-friend').click()}]}));$('private-message').disabled=true;$('private-send').disabled=true;visible('private-error',false);visible('private-older',false);visible('private-latest',false);}},
+    openPrivate(friend){if(friend){$('private-chat-heading').textContent=friend.displayName;open('private',friend.userId);}else{pause();$('private-chat-heading').textContent='Mensagens privadas';$('private-thread').replaceChildren(emptyState({kind:'chat',title:'Selecione uma conversa.',description:'Escolha um amigo na lista de contatos. O chat exige uma amizade aceita.',actions:[{label:'Encontrar pessoas',run:()=>$('add-friend').click()}]}));$('private-message').disabled=true;$('private-send').disabled=true;visible('private-error',false);visible('private-older',false);visible('private-latest',false);}},
     pause,refresh,
   };
 }

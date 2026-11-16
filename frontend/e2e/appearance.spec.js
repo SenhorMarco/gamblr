@@ -55,7 +55,7 @@ test('approved design preserves messages and controls on desktop and mobile',asy
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
   await expect(page.locator('#group-thread .chat-message')).toHaveCount(7);
   await page.screenshot({path:testInfo.outputPath('design-mobile.png'),fullPage:true});
-  await page.locator('#feed-button').click();await expect(page.locator('#page-subtitle')).toHaveText('Os palpites da sua turma, todos por aqui.');
+  await page.locator('#feed-button').click();await expect(page.locator('#page-subtitle')).toHaveText('Apostas dos grupos em que você participa.');
   await expect(page.locator('#feed-list .feed-bet-card')).toHaveCount(1);
   expect(errors).toEqual([]);
 });

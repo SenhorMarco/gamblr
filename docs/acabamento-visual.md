@@ -5,6 +5,12 @@ identidade azul e a fonte Arial, com sombras discretas, fundos suaves,
 hierarquia tipográfica, balões de mensagem e controles com foco mais claro.
 Os textos de orientação foram incorporados diretamente aos componentes.
 
+Os textos da interface se limitam a nomes de telas, ações, estados e instruções
+de uso. Slogans e chamadas promocionais foram removidos do acesso, feed,
+conversas, ranking e formulários. Na tela de acesso, a área lateral contém
+somente “Protótipo Gamblr - Laboratório de Programação II”. Em telas menores,
+o formulário vem antes dessa identificação.
+
 ## Organização
 
 [style.css](../frontend/static/style.css) reúne a base, o acabamento e a

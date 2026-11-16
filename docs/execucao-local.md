@@ -68,7 +68,7 @@ python3 -m venv .venv
 Um ambiente virtual criado no Windows não pode ser reutilizado no Linux;
 recrie o `.venv` nesse sistema. Configure o `.env` e o certificado CA conforme
 [configuração do Supabase](supabase.md), usando caminhos Linux para arquivos.
-As migrações até V009 precisam estar aplicadas antes da inicialização.
+As migrações até V011 precisam estar aplicadas antes da inicialização.
 O primeiro uso do Gradle requer acesso à internet para baixar suas dependências.
 
 As mesmas opções estão disponíveis: `./iniciar.sh --backend-only`,

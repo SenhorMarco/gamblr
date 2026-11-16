@@ -30,9 +30,9 @@ def main():
         app = create_app()
         app.extensions["check_database"]()
     except Exception:
-        sys.exit("Nao foi possivel validar o reader. Confira credenciais, TLS, rede e a aplicacao da V006.")
+        sys.exit("Nao foi possivel validar o reader. Confira credenciais, TLS, rede e as migracoes ate V011.")
     if args.action == "check":
-        print("Flask: conexao TLS, conta gamblr_reader e views de V006 validadas em modo somente leitura.")
+        print("Flask: conexao TLS, conta gamblr_reader e views ate V011 validadas em modo somente leitura.")
         return
     try:
         port = int(os.environ.get("GAMBLR_READER_PORT", "5000"))

@@ -1,5 +1,8 @@
 # Serviço de escrita: Spring Boot e Gradle
 
+Consulte o [catálogo de endpoints](endpoints.md) para a finalidade, os parâmetros,
+as respostas e as permissões de cada rota Java e Python.
+
 O serviço em `services/writer` usa Spring Boot 4.1.2, Gradle Wrapper 9.9.1 e código
 compatível com Java 21+. O JDK 27 instalado nesta máquina é suportado pelo wrapper.
 Os scripts Gradle usam sintaxe Groovy (`build.gradle`). Não é necessário instalar
