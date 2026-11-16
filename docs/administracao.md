@@ -6,21 +6,13 @@ evento no histórico do chat, conforme o RF-23.
 
 ## Ativar
 
-1. Com V001–V008 já aplicadas, execute todo o conteúdo de
-   [V009__group_administration.sql](../database/migrations/V009__group_administration.sql)
-   no SQL Editor do Supabase como `postgres`. O arquivo já configura RLS e
-   permissões. Não execute novamente as migrações anteriores.
-2. Pare as instâncias antigas e inicie os serviços novamente:
+Prepare todas as migrações **V001–V011**, em ordem, conforme o
+[README](../README.md#configuração-de-ambiente-banco-e-autenticação).
+A V009 acrescenta administração, convites e crédito diário, com RLS e
+permissões das contas técnicas.
+Após atualizar um ambiente, pare as instâncias anteriores, reinicie os serviços
+conforme [execução local](execucao-local.md) e recarregue o navegador.
 
-   ```powershell
-   .\iniciar.cmd
-   ```
-
-   No Linux, use `./iniciar.sh`.
-3. Recarregue o navegador. A migração é manual e não altera o `.env`.
-
-As migrações dos testes são aplicadas somente a schemas temporários. Elas não
-atualizam automaticamente o schema `gamblr` do ambiente em uso.
 
 ## Roteiro pelo site
 
@@ -109,7 +101,7 @@ Todas as permissões são conferidas no Spring pelo usuário do JWT. Os controle
 da interface não substituem essas verificações. A conta Flask continua lendo
 somente views autorizadas; grupos e apostas excluídos deixam de aparecer nelas.
 
-## APIs autenticadas adicionadas
+## APIs autenticadas
 
 | Método | Rota | Uso |
 | --- | --- | --- |
@@ -127,7 +119,7 @@ somente views autorizadas; grupos e apostas excluídos deixam de aparecer nelas.
 | POST | `/api/bets/{id}/delete` | Apagar aposta pelo dono |
 
 O POST de configurações recebe os mesmos campos da criação do grupo. Convites
-não têm prazo de expiração nesta etapa; um convite válido emitido continua
+não têm prazo de expiração na versão atual; um convite válido emitido continua
 pendente até ser respondido ou até o grupo ser excluído. A primeira concessão
 de saldo e a entrada são atômicas em qualquer modalidade.
 
@@ -135,4 +127,3 @@ Os testes Java usam PostgreSQL em schema temporário; os testes de navegador usa
 três sessões com respostas simuladas. As personalizações por pontos estão
 definidas nos RF-35 a RF-40 de [requisitos](requisitos.md) e implementadas pela
 [V011](personalizacao.md), incluindo preços e remoção de títulos sem reembolso.
-A arquitetura definitiva do frontend permanece uma escolha técnica futura.

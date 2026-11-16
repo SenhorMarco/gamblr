@@ -4,7 +4,8 @@ Cadastro/login são gerenciados pelo Supabase Auth. O Spring
 valida o token de usuário e aplica as regras de grupos e apostas. O banco de domínio
 continua no schema privado `gamblr`; a Data API pode permanecer desativada.
 
-Não há nova migração nesta etapa: usamos a tabela `user_identities` da V005.
+O vínculo de identidade usa `user_identities`, da V005. O código atual requer
+todas as migrações V001–V011, conforme o [README](../README.md#primeira-instalação).
 Não precisamos de senha administrativa do Auth, JWT secret ou chave `service_role`
 para validar os tokens.
 
@@ -28,8 +29,7 @@ for preenchido, deve coincidir com o issuer derivado. A chave publishable é usa
 pelo cliente de Auth; o Spring não precisa dela para validar assinaturas.
 
 Em **Authentication**, confira o provedor **Email** em **Sign In / Providers**.
-Nesta implementação inicial usamos email/senha. Login social, MFA e a interface
-de recuperação de senha ficam para outras etapas.
+A interface usa email/senha; não oferece login social, MFA ou recuperação de senha.
 
 O serviço aceita assinaturas assimétricas **ES256** e **RS256**. Confira as
 chaves do seu projeto com o verificador abaixo. Em um projeto legado que só use
@@ -64,16 +64,15 @@ Para exercitar o cadastro pelo Auth em vez da criação manual:
 
 O script solicita email, senha e nome interativamente, então chama o endpoint de
 cadastro. Com confirmação habilitada, confirme o email antes de fazer login.
-Não alteramos a confirmação global de emails no painel. O serviço de email padrão
+Mantenha a confirmação global de emails habilitada no painel. O serviço de email padrão
 do Supabase tem restrições de destinatários e limites: configure SMTP para testar
 cadastros reais com outros endereços. A criação manual de uma conta confirmada é
-apenas um recurso da demonstração, não a implementação final do cadastro do site.
+um recurso para testar com contas de desenvolvimento; o cadastro pelo site usa o Auth.
 
-Sem frontend de confirmação, o redirecionamento padrão após clicar no email pode
-abrir uma página local indisponível. Para esta etapa, confira o estado de confirmação
-em **Users** e use o login por senha. O frontend temporário já permite login,
-mas os URLs de redirecionamento e o fluxo completo de confirmação ainda precisam
-de configuração no painel para novos cadastros.
+Configure Site URL e URLs de redirecionamento no Supabase para o endereço
+usado pela interface. Depois de confirmar o email, faça login por senha.
+Se o redirecionamento não abrir o site, confira o estado da conta em **Users**
+e revise essas URLs no painel.
 
 ## Testar login e vínculo com o Spring
 
@@ -109,7 +108,7 @@ sem provisionar o perfil no Spring, omita `--profile`.
 O script descarta os tokens e encerra a sessão de teste no Auth ao final. É um
 verificador, não um cliente persistente do Gamblr. O encerramento de uma sessão
 não implica revogação instantânea de access tokens já emitidos: a validação local
-do Spring respeita a validade do JWT. O [frontend temporário](frontend.md) mantém
+do Spring respeita a validade do JWT. O [frontend](frontend.md) mantém
 sessões separadas por aba e implementa renovação e saída pelo navegador.
 
 ## O que o Spring verifica

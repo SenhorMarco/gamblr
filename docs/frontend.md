@@ -1,8 +1,7 @@
-# Frontend temporário
+# Frontend
 
-Interface local em HTML/CSS/JavaScript, com servidor/proxy Python. A escolha da
-arquitetura definitiva do frontend continua em aberto. Não há hospedagem externa
-nem build obrigatório para usar este protótipo.
+Interface local em HTML/CSS/JavaScript, com servidor/proxy Python. Não há
+build obrigatório; o servidor entrega os arquivos de `frontend/static`.
 
 ## Iniciar
 
@@ -10,7 +9,7 @@ As migrações V001–V011 devem estar aplicadas, incluindo odds por pontos (V01
 e personalização/ranking (V011). Siga a [primeira instalação](../README.md#primeira-instalação).
 Use o `.env` já configurado e contas confirmadas no Supabase Auth.
 
-Para iniciar os três serviços em um único terminal, na raiz:
+No Windows/PowerShell, para iniciar os três serviços na raiz:
 
 ```powershell
 .\iniciar.cmd
@@ -32,10 +31,6 @@ Mantenha os dois backends em execução, em terminais separados na raiz do proje
 .\.venv\Scripts\python.exe scripts/reader.py run
 ```
 
-Reinicie o Spring e o servidor do frontend para carregar as rotas de chats e
-amizades. Não inicie duas instâncias na mesma porta. O Flask de ranking e odds
-não precisa ser alterado.
-
 Em outro terminal, também na raiz:
 
 ```powershell
@@ -46,12 +41,10 @@ Abra **http://127.0.0.1:5173**. Para outra porta, use `--port 5174`. O frontend
 reutiliza as dependências Python já instaladas para os serviços. Não precisa de
 npm nem compilação JavaScript para executar.
 
-## Roteiro pelo navegador
+## Uso da interface
 
-A interface usa uma barra azul no topo e três colunas, inspiradas no Facebook
-de 2012: grupos e amigos à esquerda, conversa selecionada ao centro e apostas do
-grupo à direita. A busca filtra os grupos pelo nome. No celular, as colunas se
-empilham para preservar a leitura e os controles.
+A navegação reúne grupos, Feed e exploração de grupos. A busca filtra grupos
+pelo nome. Conversas e apostas ocupam a área principal.
 
 O centro permite enviar mensagens no grupo selecionado ou para um amigo após
 o aceite da amizade. A área privada não exibe apostas. A coluna do grupo começa
@@ -93,9 +86,8 @@ repetir o login. O cliente renova a sessão quando necessário. Senhas não são
 armazenadas. **Sair** limpa a sessão local e solicita encerrar somente aquela
 sessão no Auth, preservando a outra conta em teste.
 
-Não carregamos JavaScript externo por CDN. Campos de usuários são inseridos como
-texto. Arquivos são servidos com política de conteúdo restrita. O tratamento
-definitivo de sessões pode ser revisto com a arquitetura de produção.
+A interface não carrega JavaScript externo por CDN. Campos de usuários são inseridos como
+texto. Arquivos são servidos com política de conteúdo restrita.
 
 ## Serviços e configuração pública
 
@@ -114,10 +106,10 @@ Para acessar de outro computador na mesma rede, configure
 `http://IP_DA_MAQUINA_ANFITRIA:5173`. O acesso depende também do firewall local.
 O proxy continua acessando os backends da máquina anfitriã.
 
-## Novas rotas do Spring
+## Consultas do Spring usadas na navegação
 
 - `GET /api/groups`: grupos em que o usuário autenticado é integrante atual.
-- `GET /api/groups/public`: grupos públicos com entrada imediata.
+- `GET /api/groups/public`: grupos públicos disponíveis para exploração.
 - `GET /api/groups/{id}/bets`: propostas do grupo e somente o palpite do próprio
   usuário (`myPrediction`), quando houver.
 
@@ -153,33 +145,42 @@ Grupo e Feed atualizam dados a cada cinco segundos enquanto a aba está visível
 Os cartões encerrados identificam a participação como encerrada. A consulta de
 odds do detalhe mantém seu mecanismo existente de atualização.
 
-Essas melhorias não exigem migração adicional. Para as personalizações já
-existentes de nome e título, continua necessária a V011. Reinicie o reader e
-o frontend e recarregue o navegador para disponibilizar a nova rota e os assets.
+## Aparência e responsividade
 
-Validação em 15/11/2026: 42 testes Python, 19 testes JavaScript e 7 testes de
-navegador aprovados. A integração do reader com PostgreSQL real também passou
-em schema temporário, incluindo acesso permitido ao integrante, rejeição de
-terceiros e de quem saiu, contagens agregadas e ausência de dados individuais.
+A interface usa identidade azul, fonte Arial, sombras discretas, fundos suaves,
+balões de mensagem e indicação de foco nos controles. A folha única
+[style.css](../frontend/static/style.css) reúne estilos e regras responsivas,
+sem dependências adicionais de UI.
 
-## Limites atuais
+A organização lateral é inspirada no Facebook de 2012 e utiliza como referência a
+[imagem de organização lateral](https://img.odcdn.com.br/wp-content/uploads/2020/08/20200821092335.jpg).
 
-O design aprovado é a única aparência da aplicação. Sombras, fundos,
-tipografia, mensagens, controles e textos estão integrados à interface e à
-folha de estilos principal. Veja [design da interface](acabamento-visual.md).
+- Acima de 1100 px: menu à esquerda, conversa central, apostas e contatos à direita.
+- De 821 a 1100 px: menu e contatos permanecem nas laterais; apostas ficam abaixo
+  da conversa para preservar a largura de leitura.
+- Até 820 px: amigos ficam no menu; grupos e amigos aparecem acima da conversa.
 
-O menu compacto fica à esquerda e os contatos à direita em telas maiores.
-No celular, os amigos ficam no menu para preservar o espaço de leitura.
-Veja [layout lateral](layout-lateral.md).
+As laterais em telas maiores ficam fixas durante a rolagem abaixo do cabeçalho,
+com rolagem interna quando necessário. [sidebars.js](../frontend/static/sidebars.js)
+reposiciona os mesmos elementos, preservando eventos, estado e foco de teclado.
 
-A administração de grupos, convites, saída/remoção e crédito diário estão em
-[administracao.md](administracao.md). Resultado, contestação, cancelamento e
-pagamento estão em [resultados.md](resultados.md). A interface continua sendo um
-protótipo temporário. Pontos são exclusivamente virtuais. Cores e títulos por
-pontos estão em [personalização](personalizacao.md), com ativação pela V011;
-outros tipos de prêmio permanecem em aberto.
+O chat aproxima mensagens adjacentes do mesmo autor enviadas em até cinco minutos
+no mesmo dia. Mensagens apagadas e eventos de apostas interrompem o agrupamento.
+Cada mensagem mantém conteúdo, autor, horário e ações. A regra está em
+[message-layout.js](../frontend/static/message-layout.js). Cores de nome e título
+escolhidas pelos integrantes são preservadas.
+
+## Funcionalidades relacionadas
+
+Veja [administração](administracao.md) para convites, saída/remoção e crédito diário;
+[resultados](resultados.md) para apuração, contestação e pagamento; e
+[personalização](personalizacao.md) para cores e títulos por pontos. Pontos são
+exclusivamente virtuais, sem compra ou saque.
 
 ## Testes
+
+Windows/PowerShell, na raiz. A integração exige banco isolado e as quatro
+credenciais com CA; veja [testes e limites](../README.md#testes-e-limites).
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s scripts/tests -v
@@ -187,11 +188,12 @@ npm.cmd --prefix frontend test
 .\.venv\Scripts\python.exe scripts/writer.py integration
 ```
 
-Para o navegador, com o frontend em execução:
+Para o navegador, instale o Microsoft Edge (canal `msedge` na configuração
+do Playwright). Com o frontend em execução, parta da raiz no PowerShell:
 
 ```powershell
 cd frontend
-npm.cmd install
+npm.cmd ci
 .\node_modules\.bin\playwright.cmd test
 ```
 
@@ -200,3 +202,8 @@ amizades, chats, moderação, formulários, recarga, filtros e layout móvel. As
 `frontend/test-results`, ignorado pelo Git. Os testes Java usam PostgreSQL real
 em schema temporário para verificar listagens, reservas e privacidade. Os testes
 do proxy conferem restrição de rotas e ausência de credenciais privadas.
+
+
+Os cenários `frontend/e2e/appearance.spec.js` e `frontend/e2e/sidebars.spec.js`
+cobrem aparência, colunas, foco e preservação de rascunhos ao redimensionar.
+`frontend/tests/message-layout.test.js` cobre os limites do agrupamento de mensagens.

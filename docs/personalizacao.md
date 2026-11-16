@@ -15,8 +15,7 @@ independentes definidos pelo dono. Remover um título nunca gera reembolso.
 3. O dono abre **Gerenciar grupo → Personalização no grupo**, define os três
    preços e usa **Salvar preços**. Zero permite compras gratuitas.
 
-Como não foram definidos valores iniciais de produto, esta implementação não
-atribui preços automaticamente: em grupos novos e existentes, compras ficam
+O sistema não atribui preços automaticamente: em grupos novos e existentes, compras ficam
 desabilitadas até o dono configurar os três preços. O servidor também rejeita
 compras sem preço configurado.
 
@@ -80,11 +79,8 @@ do grupo.
 
 ## Verificação
 
-Validação em 15/11/2026: 11 testes unitários Java, 30 cenários de integração
-com PostgreSQL, 38 testes Python, 12 testes JavaScript e 4 testes de navegador
-aprovados. Os quatro cenários de integração afetados pelos ajustes finais foram
-reexecutados com sucesso. O cenário de navegador de personalização também foi
-reexecutado para conferir preços fracionários e compras gratuitas.
+Comandos Windows/PowerShell, na raiz. A integração exige banco isolado;
+veja [testes e limites](../README.md#testes-e-limites).
 
 Os testes de integração Java aplicam V001–V011 em um schema temporário e
 verificam saldo, repetição, isolamento entre grupos, retorno, moderação,

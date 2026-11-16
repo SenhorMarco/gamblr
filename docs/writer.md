@@ -1,8 +1,7 @@
 # Serviço de escrita: Spring Boot e Gradle
 
 O serviço em `services/writer` usa Spring Boot 4.1.2, Gradle Wrapper 9.9.1 e código
-compilado com `release=21`. Use JDK 21, verificado no build local. Não há matriz
-de testes para outros JDKs.
+compilado com `release=21`. Use JDK 21.
 Os scripts Gradle usam sintaxe Groovy (`build.gradle`). Não é necessário instalar
 Gradle globalmente. O primeiro build baixa a distribuição e as dependências.
 
@@ -12,15 +11,13 @@ Em instalação nova, siga o [README](../README.md#primeira-instalação) para r
 certificado e V001–V011. O trecho abaixo explica a migração de identidades;
 V005 sozinha não prepara o schema completo exigido pelo código atual.
 
-Após V001–V004, execute o conteúdo completo de
-[`V005__external_identities.sql`](../database/migrations/V005__external_identities.sql)
-no SQL Editor como `postgres`. Ela adiciona `gamblr.user_identities`, relacionando
-um par emissor/subject validado por JWT ao usuário interno do Gamblr.
-Não é necessário recriar as tabelas anteriores. O Flask não recebe acesso a essa tabela.
+A [V005](../database/migrations/V005__external_identities.sql) adiciona
+`gamblr.user_identities`, que relaciona emissor/subject do JWT ao usuário interno.
+O Flask não recebe acesso direto a essa tabela.
 
 ## 2. Compilar
 
-No PowerShell:
+No Windows/PowerShell, a partir da raiz:
 
 ```powershell
 cd services/writer
@@ -46,7 +43,7 @@ livre como `X-User-Id` para impersonar outro participante.
 Sem URL do Supabase e sem override de issuer, somente `GET /health` fica acessível. As operações de negócio
 ficam bloqueadas. Esse endpoint confirma que o processo HTTP está ativo; não é
 um teste de prontidão do banco. Cadastro/login podem ser verificados por terminal;
-o [frontend temporário](frontend.md) já oferece login e renovação de sessão por aba.
+o [frontend](frontend.md) já oferece login e renovação de sessão por aba.
 
 ## 4. Executar usando o .env
 
@@ -67,7 +64,7 @@ absoluto para o certificado na configuração da IDE.
 
 Por padrão: `http://127.0.0.1:8080`. Para a demonstração na rede local, configure
 `GAMBLR_BIND_ADDRESS=0.0.0.0` no `.env` e use o IP da máquina anfitriã nos clientes.
-O [Flask](reader.md) usa outra porta na mesma máquina. O [frontend temporário](frontend.md)
+O [Flask](reader.md) usa outra porta na mesma máquina. O [frontend](frontend.md)
 usa um proxy local para acessar os dois serviços pelo navegador.
 
 ## Endpoints
@@ -146,7 +143,8 @@ de tentar novamente. O autor não pode palpitar na própria proposta.
 
 ## Transações e prazos
 
-O protocolo de confirmação bloqueia aposta, integrante e carteira nessa ordem,
+O protocolo de confirmação adquire o lock do grupo e bloqueia aposta, integrante
+e carteira nessa ordem,
 valida o horário do servidor após adquirir os bloqueios e registra palpite,
 movimentação e saldos na mesma transação. O bloqueio da carteira impede gasto
 duplicado mesmo em apostas diferentes. Aos 90% da duração, o servidor rejeita
@@ -192,9 +190,7 @@ Spring e o PostgreSQL temporário.
 
 Chats de grupo e privados estão implementados em [chats.md](chats.md). O ciclo
 de resultado, contestação, decisão do dono, cancelamento e pagamento está em
-[resultados.md](resultados.md), com ativação pela V008. Convites, aprovação de
+[resultados.md](resultados.md), introduzido pela V008. Convites, aprovação de
 entrada, crédito diário e administração de integrantes estão em
-[administracao.md](administracao.md), com ativação pela V009. A interface segue
-como protótipo temporário. Cores e títulos por pontos estão em
-[personalização](personalizacao.md), com ativação pela V011; outros prêmios
-internos continuam em aberto.
+[administracao.md](administracao.md), introduzidos pela V009. Cores e títulos por pontos estão em
+[personalização](personalizacao.md), introduzidos pela V011.

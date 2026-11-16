@@ -1,6 +1,6 @@
 # Modelo de dados até V011
 
-Fonte de produto: [requisitos.md](requisitos.md). Este modelo prepara a persistência
+Fonte de produto: [requisitos.md](requisitos.md). Este modelo descreve a persistência
 do fluxo de aposta de grupo. As regras transacionais e de autorização
 complementares estão implementadas nos serviços.
 
@@ -30,7 +30,7 @@ complementares estão implementadas nos serviços.
 
 As consultas devem usar o prefixo `gamblr.`, por exemplo `gamblr.bets`.
 
-## Escolhas técnicas desta etapa
+## Escolhas técnicas
 
 - IDs UUID gerados pelo PostgreSQL; não há referência a `auth.users` nem coluna de
   senha. O provedor escolhido é Supabase Auth; `user_identities` vincula o subject
@@ -52,7 +52,7 @@ As consultas devem usar o prefixo `gamblr.`, por exemplo `gamblr.bets`.
 - Não há taxa, compra/saque ou redistribuição das sobras. Os prêmios internos
   disponíveis são as [personalizações por pontos](personalizacao.md) da V011.
 
-## O que o banco já garante
+## Garantias do banco
 
 - Saldo e reserva nunca negativos; valores especiais como infinito/NaN rejeitados.
 - Uma carteira e uma linha de integrante por usuário/grupo.
@@ -80,17 +80,15 @@ As FKs preservam vínculos históricos; elas não garantem que o integrante este
 ativo no momento de uma operação. Os endpoints validam a identidade,
 a participação atual e as permissões de autor, moderador ou dono.
 
-O Spring confirma palpites em uma única transação: bloquear carteira
-e aposta em ordem consistente, conferir prazo, autor, estado, valor mínimo e saldo,
-registrar o palpite e a reserva e atualizar os saldos. A conferência do prazo deve
-usar o horário do servidor depois de obter os bloqueios. Os testes de integração
+O Spring confirma palpites em uma única transação: adquirir o lock do grupo e bloquear aposta, integrante
+e carteira em ordem consistente, conferir prazo, autor, estado, valor mínimo e saldo,
+registrar o palpite e a reserva e atualizar os saldos. A conferência do prazo usa o horário do servidor depois de obter os bloqueios. Os testes de integração
 Java exercitam esse protocolo, concorrência e rollback em schema temporário.
 
 O serviço publica aposta/opções atomicamente, oferece Sim/Não para binárias e
 copia os prazos do grupo. Não expõe endpoints de edição da proposta, opções ou
 palpites. O ciclo de resultado, retirada de contestações por saída e conclusão
-automática está implementado em [resultados.md](resultados.md). Falta definir
-a interface definitiva. Crédito diário, transferência/sucessão e
+automática está implementado em [resultados.md](resultados.md). Crédito diário, transferência/sucessão e
 as APIs de saída/remoção estão implementados pela V009.
 
 O histórico não atualiza automaticamente a carteira, nem a carteira gera histórico.

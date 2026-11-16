@@ -1,182 +1,103 @@
-Requisitos do Gamblr
+# Requisitos do Gamblr
 
 O Gamblr é uma rede social em que usuários conversam em chats e fazem previsões sobre eventos. As apostas de grupo usam pontos virtuais e têm ranking próprio. Neste documento, aposta é a proposta publicada no chat e palpite é a escolha confirmada por um participante.
 
-## Acompanhamento da implementação
+## Condições de execução
 
-Revisão em 14/11/2026, após atualização com `origin/main`.
-**Implementado** indica funcionalidade presente no código; **Parcial** indica
-uma limitação descrita na anotação. As marcações não representam uma nova
-validação ponta a ponta do ambiente nem alteram as regras abaixo.
+O código atual requer todas as migrações V001–V011. Crédito diário e apuração
+automática dependem do Java em execução; os workers retomam processamentos
+pendentes. Consulte [administração](administracao.md), [resultados](resultados.md)
+e [execução local](execucao-local.md).
 
-Requisitos de personalização definidos e implementados em 15/11/2026
-(RF-35 a RF-40 e atualização do RF-04), com a migração V011.
-
-As funcionalidades de administração e crédito diário exigem a migração
-[V009](../database/migrations/V009__group_administration.sql), além das anteriores.
-O crédito diário e a apuração automática dependem do serviço Java em execução;
-os workers retomam os processamentos pendentes. Veja [administração](administracao.md),
-[resultados](resultados.md) e [execução local](execucao-local.md).
-
-Contas e comunicação
-
-**Status: Implementado** — Cadastro e login disponíveis na interface com Supabase Auth (`frontend/static/auth.js`).
+## Contas e comunicação
 
 RF-30 Cadastro e login — O site deve permitir que usuários criem uma conta e façam login.
 
-**Status: Implementado** — Pedidos, aceite e autorização do chat privado implementados em `ChatService` e `frontend/static/chat.js`.
-
 RF-16 Amizades e chat privado — Um usuário pode enviar um pedido de amizade a outro. O chat privado entre os dois fica disponível após o destinatário aceitar o pedido.
-
-**Status: Implementado** — Criação, chat e restrição do histórico pela entrada implementados; apostas abertas acessíveis aos novos membros.
 
 RF-31 Criação e chat de grupo — Um usuário pode criar um grupo e se torna seu dono. Os integrantes podem conversar em um chat compartilhado pelo grupo. Usuários que entram no grupo não podem consultar o histórico anterior de mensagens, mas podem visualizar as apostas que ainda estão abertas.
 
-**Status: Implementado** — Chats privados não oferecem publicação ou participação em apostas.
-
 RF-32 Apostas em chats privados — Não haverá apostas em chats privados.
 
-Entrada e administração dos grupos
-
-**Status: Implementado** — Convites, aceite/recusa, solicitações e política de convites implementados em `GroupService` e `frontend/static/groups.js` (V009).
+## Entrada e administração dos grupos
 
 RF-17 Entrada e convites — Usuários podem entrar em um grupo por convite. Grupos públicos podem permitir entrada imediata ou exigir solicitação. O dono configura se os convites podem ser enviados por todos os membros ou se ficam restritos aos moderadores.
 
-**Status: Implementado** — Aprovação, remoção por hierarquia e exclusão de mensagens/apostas implementadas; exclusão de apostas preserva o histórico financeiro (V009).
-
 RF-18 Solicitações, remoção de membros e mensagens — O dono e os moderadores podem aprovar solicitações de entrada e apagar mensagens do chat, inclusive mensagens de outros membros. O dono pode remover membros comuns e moderadores e apagar apostas. Um moderador pode remover apenas membros comuns e não pode apagar apostas.
 
-Ao apagar uma aposta pendente, o sistema a cancela e devolve integralmente os pontos reservados. Se a aposta já estiver concluída, apenas a oculta, sem desfazer pagamentos. O histórico financeiro é preservado. Decisão confirmada para a exclusão de apostas pelo dono.
-
-**Status: Implementado** — Promoção e destituição restritas ao dono em `GroupService` (V009).
+Ao apagar uma aposta pendente, o sistema a cancela e devolve integralmente os pontos reservados. Se a aposta já estiver concluída, apenas a oculta, sem desfazer pagamentos. O histórico financeiro é preservado.
 
 RF-29 Gestão de moderadores — Somente o dono pode nomear ou destituir moderadores.
 
-**Status: Implementado** — Transferência e sucessão por papel e primeira entrada implementadas, com mudança do responsável pelas contestações (V009).
-
 RF-27 Transferência e sucessão — O dono pode transferir a propriedade para outro membro. A transferência é imediata e dispensa aceite. O antigo dono passa a ser moderador. Se o dono sair sem nomear um sucessor, o sistema transfere a propriedade ao moderador atual com a primeira entrada mais antiga. Se não houver moderadores, assume o membro atual com a primeira entrada mais antiga. A primeira data de entrada é preservada em caso de retorno. O novo dono assume as contestações pendentes.
-
-**Status: Implementado** — Saída do último dono realiza exclusão lógica, preservando registros financeiros (V009).
 
 RF-28 Exclusão do grupo — O sistema exclui o grupo quando seu dono sai e era o último membro.
 
-Pontos e ranking
-
-**Status: Implementado** — Carteira por grupo e crédito inicial único implementados nos fluxos de entrada.
+## Pontos e ranking
 
 RF-01 Saldo inicial — Cada usuário tem um saldo independente em cada grupo. Na primeira entrada, recebe a quantidade de pontos definida pelo dono do grupo. O sistema concede esse crédito uma única vez por usuário e por grupo.
 
-**Status: Implementado** — Configuração, agendamento à meia-noite de Brasília e recuperação idempotente implementados em `DailyCreditService` e `DailyCreditWorker` (V009).
-
 RF-02 Crédito diário — O dono define uma quantidade fixa de pontos por dia para o grupo. À meia-noite no horário de Brasília (America/Sao\_Paulo), o sistema credita essa quantidade a cada usuário que for membro naquele momento, uma única vez por dia e por grupo.
-
-**Status: Implementado** — Saída preserva carteira; retorno não repete crédito inicial. Administração integra esses fluxos (V009).
 
 RF-03 Saldo no retorno — O sistema preserva o saldo do usuário que sai ou é removido. Se ele retornar, recupera o saldo atualizado pelas movimentações das apostas em que participou, sem novo crédito inicial.
 
-**Status: Implementado** — Pontos virtuais sem compra ou saque, com resgate de personalizações dos RF-35 a RF-40 (V011).
-
 RF-04 Uso dos pontos — Os pontos são exclusivamente virtuais, sem compra ou saque. Os integrantes podem usar os pontos do próprio grupo para personalizar a cor do nome, o texto do título e a cor do título, conforme os RF-35 a RF-40.
-
-**Status: Implementado** — Saída/remoção preserva palpites e carteiras e processa os efeitos sobre autoria e contestações (V009).
 
 RF-19 Palpites após saída ou remoção — O palpite confirmado continua válido quando seu participante sai ou é removido. Os pontos continuam reservados até a conclusão da aposta. O sistema registra ganhos e devoluções no saldo daquele grupo mesmo enquanto o participante estiver fora. A saída ou remoção do autor segue o RF-10, e a retirada de contestações segue o RF-11.
 
-**Status: Implementado** — Ranking por saldo disponível e desempate por criação da conta implementados na view e no reader.
-
 RF-20 Ranking — O ranking de cada grupo ordena seus membros pelo saldo disponível, do maior para o menor. Pontos reservados ficam fora desse saldo. Em caso de empate, aparece primeiro quem criou a conta no Gamblr há mais tempo.
 
-Publicação e participação nas apostas de grupo
-
-**Status: Implementado** — Publicação binária/múltipla escolha implementada; evento com acesso à aposta no chat adicionado pela V009.
+## Publicação e participação nas apostas de grupo
 
 RF-23 Publicação da aposta — O membro pode propor uma aposta no chat do grupo. Ao publicar, informa a pergunta, o tipo de aposta, as opções de resposta, o horário de término e o valor mínimo em pontos por palpite. A aposta binária oferece Sim e Não. A de múltipla escolha oferece as opções propostas pelo autor. O critério de verificação do resultado é opcional.
 
-**Status: Implementado** — Não há operações de edição de apostas ou opções publicadas.
-
 RF-25 Dados da aposta publicada — Os dados da aposta ficam bloqueados para edição a partir da publicação.
-
-**Status: Implementado** — Servidor verifica fechamento aos 90% antes de confirmar o palpite.
 
 RF-06 Horário de fechamento — A duração da aposta vai da publicação ao horário de término escolhido pelo autor. A aposta deixa de aceitar palpites quando completa 90% dessa duração. O servidor rejeita novos palpites a partir desse instante.
 
-**Status: Implementado** — Cancelamento no período inicial e devolução transacional implementados em `ResolutionService`.
-
 RF-24 Cancelamento pelo autor — O autor pode cancelar a aposta durante os primeiros 10% da duração, inclusive se já houver palpites. O sistema devolve integralmente os pontos conforme o RF-12.
-
-**Status: Implementado** — Servidor valida participação atual, prazo e impedimento do autor.
 
 RF-15 Participação — Qualquer membro atual pode apostar enquanto os palpites estiverem abertos, exceto o autor da proposta. Um usuário que entrar no grupo após a publicação pode participar se o prazo de palpites ainda estiver aberto.
 
-**Status: Implementado** — Unicidade no banco e ausência de operações de alteração/retirada de palpites confirmados.
-
 RF-08 Palpite único e definitivo — Cada participante pode confirmar um único palpite, escolhendo uma única opção. Após a confirmação, não pode mudar a escolha, alterar o valor ou retirar o palpite.
-
-**Status: Implementado** — Validação de saldo/mínimo e reserva na mesma transação, com bloqueios e proteção contra concorrência.
 
 RF-09 Valor e reserva de pontos — O valor do palpite deve atingir o mínimo definido pelo autor e caber no saldo disponível do participante. O sistema registra o palpite e reserva os pontos na mesma operação. A reserva reduz imediatamente o saldo disponível e impede o uso dos mesmos pontos em outras apostas.
 
-Visibilidade das apostas de grupo
-
-**Status: Implementado** — Contagem e odds atualizadas por long polling autenticado enquanto a aba está visível, com detecção de mudanças a cada 500 ms e reconexão automática. O servidor revalida a participação durante a espera.
+## Visibilidade das apostas de grupo
 
 RF-13 Contagem e odds em tempo real — Todos os membros podem acompanhar, em tempo real, a contagem de votos e a odd de cada opção em todas as apostas que ainda aceitam palpites, inclusive quando não apostaram nelas.
 
-**Status: Implementado** — APIs expõem apenas o palpite próprio e agregados autorizados do grupo.
-
 RF-14 Privacidade dos palpites — Cada participante pode consultar somente a própria escolha e o valor que apostou. Os dados compartilhados com o grupo são agregados por opção.
-
-**Status: Implementado** — View de odds calcula total de pontos/pontos da opção (V010); interface exibe “—” sem pontos. A barra contínua representa a proporção de pessoas por opção, separadamente das odds.
 
 RF-05 Cálculo da odd decimal — Para uma opção com pontos apostados, divide-se o total de pontos da aposta pelo total de pontos daquela opção. Por exemplo, 40 pontos de um total de 100 produzem odd 2,50. Opções sem pontos exibem “—”. O pagamento segue o RF-07.
 
-Apuração e contestação das apostas de grupo
-
-**Status: Implementado** — Configuração editável pelo dono e cópia dos prazos na publicação implementadas (V009).
+## Apuração e contestação das apostas de grupo
 
 RF-26 Configuração dos prazos — O dono configura os prazos de apuração e de contestação para o grupo. O sistema registra os prazos vigentes no momento da publicação. Mudanças na configuração valem apenas para apostas publicadas depois da alteração.
 
-**Status: Implementado** — Publicação, cancelamento por prazo e efeitos da saída do autor implementados em `ResolutionService` e worker; saída integrada pela V009.
-
 RF-10 Publicação do resultado e cancelamento automático — Após o horário de término, o autor pode publicar a opção vencedora até o fim do prazo de apuração, contado a partir do término. Se o prazo expirar sem resultado, o sistema cancela a aposta. A saída ou remoção do autor antes da publicação do resultado também cancela a aposta. Após a publicação do resultado, a aposta segue para conclusão mesmo que o autor saia ou seja removido.
-
-**Status: Implementado** — Reserva, contestação, retirada por saída e conclusão conforme prazo implementadas; saída integrada pela V009.
 
 RF-11 Contestação e reserva dos pontos — O prazo de contestação começa com a publicação do resultado. Durante esse prazo, um usuário pode contestar se tiver apostado e ainda for membro do grupo. Os pontos ficam reservados até o fim do prazo. Sem contestação pendente, o sistema apura pelo resultado publicado. Se houver contestação pendente, mantém os pontos reservados até a decisão do dono. Se o participante sair ou for removido antes da decisão, sua contestação é removida e seu palpite continua válido. Se a última contestação for removida antes do fim do prazo, o sistema aguarda o prazo terminar. Se o prazo já tiver terminado, o sistema apura imediatamente pelo resultado publicado.
 
-**Status: Implementado** — Decisões do dono e preservação do prazo para novas contestações implementadas em `ResolutionService`.
-
 RF-22 Decisão sobre a contestação — O dono do grupo pode decidir a qualquer momento, sem prazo limite, inclusive quando é autor da aposta ou registrou um palpite. Ele pode manter o resultado publicado, escolher outra opção vencedora ou cancelar a aposta. Se decidir antes do fim do prazo de contestação, a decisão fica registrada, mas o prazo continua até o fim e os participantes ainda podem contestar durante esse período. Ao fim do prazo, sem contestações pendentes, o sistema apura pelo resultado final. O cancelamento segue o RF-12.
 
-Distribuição dos pontos
-
-**Status: Implementado** — Rateio proporcional, arredondamento para baixo e tratamento de vencedores com zero pontos implementados em `ResolutionService`.
+## Distribuição dos pontos
 
 RF-07 Pagamento aos vencedores — Cada vencedor recupera integralmente os pontos que apostou e recebe uma parcela dos pontos perdidos. Para calcular a parcela, multiplica-se o total de pontos perdidos pelo valor apostado pelo vencedor e divide-se pelo total de pontos apostados pelos vencedores. O sistema arredonda a parcela individual para baixo e deixa a sobra sem distribuição. A odd decimal é calculada pela proporção dos pontos apostados.
 
-Se a opção vencedora tiver apenas palpites de zero pontos, a aposta é encerrada sem distribuir os pontos perdidos. Os palpites vencedores recebem zero e os pontos dos perdedores são descontados definitivamente. Decisão confirmada para evitar divisão por zero.
-
-**Status: Implementado** — Devolução integral às carteiras, inclusive de ex-integrantes, implementada na conclusão transacional.
+Se a opção vencedora tiver apenas palpites de zero pontos, a aposta é encerrada sem distribuir os pontos perdidos. Os palpites vencedores recebem zero e os pontos dos perdedores são descontados definitivamente.
 
 RF-12 Devolução por cancelamento — Ao cancelar uma aposta, o sistema devolve a cada participante a quantidade exata de pontos que ele apostou, inclusive se ele já tiver saído do grupo ou sido removido.
 
-**Status: Implementado** — Conclusão sem vencedores consome reservas sem novo débito do saldo disponível.
-
 RF-21 Resultado sem vencedores — Se ninguém tiver escolhido a opção vencedora no resultado final, o sistema encerra a aposta e desconta definitivamente os pontos reservados, sem novo débito no saldo disponível.
 
-Feed de apostas
-
-**Status: Implementado** — Botão Feed abaixo de Explorar grupos; listagem por publicação mais recente dos grupos em que o usuário participa, com acesso à aposta no grupo (`frontend/static/app.js`).
+## Feed de apostas
 
 RF-33 Feed de apostas dos grupos — O usuário pode acessar um Feed que reúne as apostas dos grupos dos quais é integrante atual, ordenadas da publicação mais recente para a mais antiga. Cada item identifica o grupo, a pergunta, a data de publicação e a situação. Ao selecionar Ver aposta, o sistema abre o grupo correspondente com a aposta selecionada. A listagem informa quando não há apostas ou quando algum grupo não pôde ser carregado.
 
-**Status: Implementado** — Filtros combináveis por situação, grupos, datas e texto, com limpeza, contagem de resultados e validação do intervalo (`frontend/static/feed.js` e `frontend/static/app.js`). Testes de filtragem em `frontend/tests/feed.test.js`.
-
 RF-34 Filtros do Feed — O usuário pode combinar filtros por situação (todas, ativas, aceitando palpites, aguardando resultado, resultado publicado, concluídas ou canceladas), um ou mais grupos dos quais participa, intervalo de datas de publicação e texto da pergunta. Sem seleção de grupos, o Feed considera todos os seus grupos. O intervalo inclui os dias inicial e final no horário local do usuário; datas invertidas exibem erro. Os resultados preservam a ordem de publicação mais recente. O usuário pode limpar todos os filtros e consultar a quantidade de apostas encontradas. A interface informa quando nenhuma aposta corresponde aos filtros. Ativas inclui apostas em andamento e com resultado publicado; aguardando resultado inclui apostas cujo término já passou e ainda não possuem resultado publicado.
 
-Personalização e resgate de prêmios nos grupos
-
-**Status: Implementado** — RF-35 a RF-40 em `PersonalizationService`, no ranking do reader e na interface de administração (V011). Veja [personalização](personalizacao.md) para ativação, APIs e detalhes de validação. Compras ficam indisponíveis até o dono definir os três preços, inclusive quando forem zero.
+## Personalização e resgate de prêmios nos grupos
 
 RF-35 Cor do nome — Todos iniciam com a cor de nome padrão atual. O integrante pode escolher qualquer cor RGB para seu nome naquele grupo. Cada mudança é uma nova compra, pelo preço vigente definido pelo dono.
 
@@ -190,9 +111,7 @@ RF-39 Escopo, exibição e permanência — A cor do nome, o título e sua cor s
 
 RF-40 Remoção de título e moderação — O usuário pode remover o próprio título gratuitamente. Moderadores podem remover títulos apenas de membros comuns; o dono, que possui os poderes de moderação e permissões adicionais, pode remover o título de qualquer integrante. A remoção apaga o título e restaura sua cor padrão, sem alterar a cor do nome. Nenhuma remoção gera reembolso, independentemente de quem a realize; não são devolvidos os pontos gastos no texto nem na cor. Para definir um novo título após a remoção, o usuário paga novamente o preço vigente, e a escolha de uma cor personalizada é cobrada separadamente.
 
-Apresentação das apostas, ranking e estados vazios
-
-**Status: Implementado** — RF-41 a RF-43 definidos e implementados em 15/11/2026 em `presentation.js`, nas listagens do grupo e do Feed, no ranking e nos estados vazios. A participação é consultada em lote pelo reader, com autorização por grupo. O estilo visual atual foi preservado e os fluxos foram verificados em desktop e celular. Veja [frontend](frontend.md#apostas-ranking-e-estados-vazios-rf-41-a-rf-43).
+## Apresentação das apostas, ranking e estados vazios
 
 RF-41 Destaque e participação nas listagens de apostas — Os cartões de apostas nas listagens do grupo e no Feed devem destacar a pergunta como informação principal. Cada cartão deve identificar a situação da aposta por um rótulo textual e por cores suaves e consistentes, diferenciando palpites abertos, palpites encerrados, aguardando resultado, resultado publicado, concluída e cancelada. A cor não deve ser o único meio de identificar a situação.
 
@@ -206,7 +125,7 @@ RF-43 Estados vazios com orientação e ação — As áreas de grupos, apostas,
 
 O sistema deve diferenciar ausência de conteúdo de ausência de resultados após busca ou filtros. Por exemplo, um grupo sem apostas deve convidar à primeira publicação; uma listagem sem correspondências deve oferecer ajuste ou limpeza dos filtros; um grupo com apenas um integrante pode sugerir convidar outra pessoa, se esse integrante tiver permissão para enviar convites. As ações devem respeitar as permissões existentes e não sugerir operações indisponíveis ao usuário. Carregamento e falha de consulta devem ter mensagens próprias, sem serem tratados como estados vazios. Os desenhos não devem substituir o texto de orientação.
 
-Requisitos técnicos
+## Requisitos técnicos
 
 RT-01 Execução na rede local — Uma única máquina executa os serviços de backend. Os demais computadores acessam a aplicação e se conectam ao backend da máquina anfitriã pela mesma rede Wi-Fi.
 
@@ -214,7 +133,7 @@ RT-02 Serviços e endpoints — O backend inclui um serviço em Java com Spring 
 
 RT-03 Banco de dados — O sistema usa o Supabase para persistir os dados da aplicação.
 
-Critérios de aceitação
+## Critérios de aceitação
 
 • Prazos. Uma aposta publicada às 10h com término às 20h pode ser cancelada pelo autor às 10h45. Às 11h01 o cancelamento pelo autor é rejeitado. Às 19h o servidor passa a rejeitar novos palpites.
 
@@ -240,8 +159,8 @@ Critérios de aceitação
 
 • Estados vazios acionáveis. Um grupo sem apostas apresenta desenho, orientação e a ação “Publique a primeira aposta”, que abre o formulário de publicação. Uma busca ou filtro sem resultados oferece ajuste ou limpeza dos critérios. A ação “Convide alguém para o grupo” aparece somente para quem pode convidar e abre o fluxo de convite. Uma falha de carregamento apresenta erro e possibilidade de tentar novamente, em vez de afirmar que não há conteúdo. Esses estados e ações permanecem legíveis e utilizáveis em desktop e celular.
 
-Decisões em aberto
+## Limites do produto
 
-• Preços automáticos. Nenhum valor inicial numérico foi definido. Nesta implementação, grupos novos e existentes aguardam a configuração dos três preços pelo dono. A adoção futura de preços automáticos permanece em aberto.
-
-• Outros prêmios internos. Tipos e condições de resgate de prêmios além das personalizações dos RF-35 a RF-40.
+Os preços de personalização não são atribuídos automaticamente: o dono precisa
+configurar os três preços, inclusive quando forem zero. Os prêmios disponíveis
+são somente as personalizações descritas nos RF-35 a RF-40.

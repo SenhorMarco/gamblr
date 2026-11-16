@@ -53,8 +53,8 @@ valor separado da senha.
 
 ## 4. Acesso aos dados
 
-A divisão técnica inicial é Spring Boot para escritas e Flask para consultas de
-ranking e odds. As conexões PostgreSQL ficam nos backends.
+Spring Boot executa operações de domínio; Flask consulta ranking, participação
+e odds. As conexões PostgreSQL ficam nos backends.
 
 Para esse uso, a Data API não é necessária: no painel, abra a visão geral da
 integração **Data API** e desative **Enable Data API**. Faça isso no projeto de
@@ -83,7 +83,7 @@ da máquina anfitriã. Para testar usando o `.env`, execute na raiz do projeto:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r scripts/requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r scripts/requirements.txt -r services/reader/requirements.txt
 .\.venv\Scripts\python.exe scripts/check_supabase.py
 ```
 
@@ -97,10 +97,11 @@ O arquivo `.env` é lido sem expansão de variáveis `${...}` da senha. Não é
 necessário ativar o ambiente virtual no PowerShell.
 
 Alternativamente, se tiver o cliente `psql` instalado, valide a conexão no
-PowerShell, substituindo somente host e usuário pelos valores do painel:
+PowerShell, na raiz, após salvar o CA conforme a seção abaixo. Substitua host
+e usuário pelos valores do painel:
 
 ```powershell
-psql "host=HOST_DO_PAINEL port=5432 dbname=postgres user=postgres.PROJECT_REF sslmode=require connect_timeout=10" -W -c "\conninfo" -c "select current_database(), current_user;"
+psql "host=HOST_DO_PAINEL port=5432 dbname=postgres user=postgres.PROJECT_REF sslmode=verify-full sslrootcert=certs/supabase-ca.crt connect_timeout=10" -W -c "\conninfo" -c "select current_database(), current_user;"
 ```
 
 O parâmetro `-W` solicita a senha interativamente. O resultado esperado é o banco
@@ -134,7 +135,7 @@ sistema e mantém a validação do hostname. A pasta `certs` é local e está ig
 pelo Git. Se o erro persistir, confira a nova mensagem; VPN ou proxy podem
 interferir na conexão, mas a presença da VPN por si só não comprova a causa.
 
-## Próxima etapa e decisões em aberto
+## Banco e serviços
 
 Após validar o acesso, siga [Banco de dados: permissões e migrações](banco-de-dados.md).
 Os scripts iniciais de roles e permissões estão preparados no repositório para
@@ -145,7 +146,7 @@ A autenticação escolhida é [Supabase Auth](supabase-auth.md).
 Os instantes do domínio usam fuso (`timestamptz`); o crédito
 diário segue `America/Sao_Paulo`, conforme RF-02, independentemente do
 fuso exibido na sessão. Cores e títulos por pontos exigem a V011, conforme
-[personalização](personalizacao.md). Outros prêmios internos permanecem em aberto.
+[personalização](personalizacao.md). Os prêmios disponíveis são cores e títulos por pontos.
 
 ## Referências oficiais
 
